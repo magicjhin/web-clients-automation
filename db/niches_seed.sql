@@ -46,7 +46,7 @@ INSERT INTO niches (name, search_term, ai_rank, status) VALUES
 ('Bibliotekos ir Informacijos Centrai', 'bibliotekos', 35, 'pending'),
 ('Finansų Konsultacijos', 'finansų konsultacija', 36, 'pending'),
 ('Veterinarinės Paslaugos', 'veterinarija', 37, 'pending'),
-('Inovacijos ir Startup\'ai', 'startup\'ai', 38, 'pending'),
+('Inovacijos ir Startupai', 'startupai', 38, 'pending'),
 ('Energetika ir Saulės Paneeliai', 'saulės paneeliai', 39, 'pending'),
 ('Aplinkos Apsauga', 'aplinkos apsauga', 40, 'pending'),
 
