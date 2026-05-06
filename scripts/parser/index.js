@@ -7,8 +7,7 @@
 //   (или через Telegram /parse, /parse 1, /parse auto)
 
 const db = require('../shared/db');
-const logger = require('../shared/logger');
-const config = require('../shared/config');
+const log = require('../shared/logger')('parser');
 const scraper = require('./scraper');
 
 async function getTopNiches(limit = 5) {
@@ -43,11 +42,11 @@ async function getNicheByName(name) {
 }
 
 async function countQualifiedInQueue() {
-  const query = `
-    SELECT COUNT(*) as count FROM companies WHERE status = 'qualified' AND processed = false
-  `;
-  const result = await db.one(query, []);
-  return result.count || 0;
+  const result = await db.one(
+    `SELECT COUNT(*) as count FROM companies WHERE status = 'qualified'`,
+    []
+  );
+  return parseInt(result.count) || 0;
 }
 
 async function updateNicheStatus(nicheId, status) {
@@ -92,14 +91,14 @@ async function parseNiche(nicheId) {
 
     // Обновляю статус на 'parsing'
     await updateNicheStatus(nicheId, 'parsing');
-    await logger.log('info', 'parser', `Запуск парсинга нише: ${niche.name} (search_term: ${niche.search_term})`);
+    await log.info(`Запуск парсинга нише: ${niche.name} (search_term: ${niche.search_term})`);
 
     // Запускаю scraper
     const result = await scraper.scrapeNiche(niche.search_term, nicheId);
 
     // Обновляю статус на 'completed'
     await updateNicheStatus(nicheId, 'completed');
-    await logger.log('info', 'parser', `Завершен парсинг нише: ${niche.name}. Найдено: ${result.companiesFound}`);
+    await log.info(`Завершен парсинг нише: ${niche.name}. Найдено: ${result.companiesFound}`);
 
     return {
       success: true,
@@ -108,7 +107,7 @@ async function parseNiche(nicheId) {
       companiesNew: result.companiesNew
     };
   } catch (error) {
-    await logger.log('error', 'parser', `Ошибка при парсинге нише #${nicheId}: ${error.message}`);
+    await log.error(`Ошибка при парсинге нише #${nicheId}: ${error.message}`);
     await updateNicheStatus(nicheId, 'pending'); // вернуть статус на pending при ошибке
     return { error: error.message };
   }
@@ -144,7 +143,7 @@ async function parseAuto() {
       return { error: result.error };
     }
   } catch (error) {
-    await logger.log('error', 'parser', `Ошибка при автопарсинге: ${error.message}`);
+    await log.error(`Ошибка при автопарсинге: ${error.message}`);
     return { error: error.message };
   }
 }

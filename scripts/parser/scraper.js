@@ -5,7 +5,7 @@
 
 const puppeteer = require('puppeteer');
 const db = require('../shared/db');
-const logger = require('../shared/logger');
+const log = require('../shared/logger')('scraper');
 
 const REKVIZITAI_BASE_URL = 'https://rekvizitai.lt';
 const SEARCH_URL = `${REKVIZITAI_BASE_URL}/en/search/`;
@@ -25,7 +25,7 @@ async function scrapeNiche(searchTerm, nicheId) {
     page.setDefaultNavigationTimeout(30000);
     page.setDefaultTimeout(30000);
 
-    await logger.log('info', 'scraper', `Запуск парсинга: ${searchTerm} (nicheId: ${nicheId})`);
+    await log.info(`Запуск парсинга: ${searchTerm} (nicheId: ${nicheId})`);
 
     // Переходим на страницу поиска с поисковым запросом
     const searchUrl = `${SEARCH_URL}?search=${encodeURIComponent(searchTerm)}`;
@@ -44,7 +44,7 @@ async function scrapeNiche(searchTerm, nicheId) {
     }
 
     pageCount = Math.min(pageCount, 50); // лимит 50 страниц = ~1000 компаний
-    await logger.log('info', 'scraper', `Найдено ${pageCount} страниц для ${searchTerm}`);
+    await log.info(`Найдено ${pageCount} страниц для ${searchTerm}`);
 
     // Парсим каждую страницу
     for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
@@ -95,32 +95,28 @@ async function scrapeNiche(searchTerm, nicheId) {
           new Map(validCompanies.map(c => [c.company_code || c.name, c])).values()
         );
 
-        await logger.log(
-          'info',
-          'scraper',
-          `Страница ${pageNum}/${pageCount}: найдено ${uniqueCompanies.length} компаний для ${searchTerm}`
-        );
+        await log.info(`Страница ${pageNum}/${pageCount}: найдено ${uniqueCompanies.length} компаний для ${searchTerm}`);
 
         // Вставляем в БД
         for (const company of uniqueCompanies) {
           try {
             const exists = await db.one(
-              'SELECT id FROM companies WHERE niche_id = $1 AND (name = $2 OR company_code = $3)',
-              [nicheId, company.name, company.company_code]
+              'SELECT id FROM companies WHERE company_code = $1 OR (niche_id = $2 AND name = $3)',
+              [company.company_code || '', nicheId, company.name]
             );
 
             if (!exists) {
               await db.query(
                 `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
                  VALUES ($1, $2, $3, $4, 'raw', NOW())`,
-                [nicheId, company.name, company.company_code, company.rekvizitai_url]
+                [nicheId, company.name, company.company_code || null, company.rekvizitai_url || null]
               );
               companiesNew++;
             }
 
             collectedCompanies.push(company);
           } catch (insertError) {
-            await logger.log('warn', 'scraper', `Не удалось вставить: ${company.name} — ${insertError.message}`);
+            await log.warn(`Не удалось вставить: ${company.name} — ${insertError.message}`);
           }
         }
       } catch (pageError) {
@@ -138,11 +134,7 @@ async function scrapeNiche(searchTerm, nicheId) {
       nicheId
     ]);
 
-    await logger.log(
-      'info',
-      'scraper',
-      `✅ Завершён парсинг ${searchTerm}: ${collectedCompanies.length} компаний (${companiesNew} новых)`
-    );
+    await log.info(`✅ Завершён парсинг ${searchTerm}: ${collectedCompanies.length} компаний (${companiesNew} новых)`);
 
     return {
       companiesFound: collectedCompanies.length,
@@ -150,7 +142,7 @@ async function scrapeNiche(searchTerm, nicheId) {
       searchTerm: searchTerm
     };
   } catch (error) {
-    await logger.log('error', 'scraper', `Критическая ошибка при парсинге ${searchTerm}: ${error.message}`);
+    await log.error(`Критическая ошибка при парсинге ${searchTerm}: ${error.message}`);
     throw error;
   } finally {
     if (browser) {
