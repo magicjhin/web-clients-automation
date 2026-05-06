@@ -1,189 +1,134 @@
-# n8n Import Guide — Импорт всех 6 воркфлоу
+# n8n Workflow Manual Setup Guide
 
-## Быстрый импорт (рекомендуется)
+Поскольку API не копирует структуру, создаём workflow'ы вручную. Всего 6 workflow'ов, каждый занимает 2-3 минуты.
 
-### Шаг 1: Скачай файлы
-Все JSON файлы находятся в `n8n/` папке:
-```
-n8n/
-├── 01-telegram-bot.json
-├── 02-parser.json
-├── 03-filter.json
-├── 04-audit-email.json
-├── 05-followup-email.json
-└── 06-imap-listener.json
-```
+## Workflow 1: Telegram Bot - Command Router
 
-### Шаг 2: Импортируй в n8n
+### Узлы:
+1. **Webhook - Telegram** (trigger)
+   - Type: Webhook
+   - Path: `telegram-bot`
+   - Method: POST
 
-1. Зайди в n8n: http://178.104.253.76:5678
-2. Нажми меню **Dashboard** (левая сторона)
-3. Нажми **+ New** → **Import from URL** или **Import from file**
-4. Выбери файл `01-telegram-bot.json`
-5. Нажми **Import**
-6. Повтори для остальных файлов (02, 03, 04, 05, 06)
+2. **Extract Message** (function)
+   ```javascript
+   const msg = $input.first().json.message;
+   return {
+     json: {
+       text: msg.text || '',
+       chatId: msg.chat.id,
+       userId: msg.from.id,
+       messageId: msg.message_id
+     }
+   };
+   ```
 
-### Шаг 3: Настрой Credentials
+3. **Switch - Command Router** (switch)
+   - Mode: Expression
+   - Expression: ={{"/parse": ($json.text.includes("/parse")), "/status": ($json.text.includes("/status")), "/stats": ($json.text.includes("/stats")), "/help": ($json.text.includes("/help"))}}
 
-Для каждого воркфлоу, если нужны credentials:
+4. **Execute - Parse List** (execute-command-plus)
+   - Command: `cd /opt/leadgen && node scripts/parser/index.js --list`
 
-1. Открой воркфлоу
-2. Найди ноду **Telegram** (если есть)
-3. Нажми на **Credentials** → **Create New** или выбери существующие
-4. Введи:
-   - **Bot Token**: `8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A`
+5. **Execute - Status** (execute-command-plus)
+   - Command: `cd /opt/leadgen && node scripts/parser/index.js --status`
 
-### Шаг 4: Активируй воркфлоу
+6. **Execute - Stats** (execute-command-plus)
+   - Command: `cd /opt/leadgen && node scripts/parser/index.js --stats`
 
-Для каждого воркфлоу нажми кнопку **Activate** (вверху справа)
+7. **Format - Help Message** (function)
+   ```javascript
+   return { json: { text: '🤖 *Leadgen Bot*\n\n*Команды:*\n📊 /parse\n📊 /parse 1\n🔄 /parse auto\n📈 /status\n📋 /stats\n❓ /help' } };
+   ```
 
----
+8. **Format - Response** (function)
+   ```javascript
+   let result = $input.first().json;
+   let text = '';
+   if (typeof result === 'string') { text = result; }
+   else if (result.message) { text = result.message; }
+   else if (result.error) { text = 'Error: ' + result.error; }
+   else { text = JSON.stringify(result, null, 2); }
+   return { json: { text: text, chatId: $node['Extract Message'].json.chatId } };
+   ```
 
-## Альтернатива: Создавай вручную через UI
+9. **Send - Telegram Message** (telegram)
+   - Chat ID: `5900706320`
+   - Text: `{{ $node['Format - Response'].json.text }}`
+   - Parse Mode: Markdown
 
-Если импорт не работает, смотри инструкции в:
-```
-docs/N8N_WORKFLOWS_COMPLETE.md
-```
-
-Там пошагово описано как создавать каждый воркфлоу через UI.
-
----
-
-## Проверка после импорта
-
-### 1. Telegram Webhook
-
-Установи webhook для Telegram Bot:
-
-```bash
-# PowerShell
-$token = "8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A"
-curl.exe -X POST "https://api.telegram.org/bot$token/setWebhook?url=http://178.104.253.76:5678/webhook/telegram-bot"
-
-# BASH
-curl -X POST "https://api.telegram.org/bot8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A/setWebhook?url=http://178.104.253.76:5678/webhook/telegram-bot"
-```
-
-### 2. Тест Telegram Bot
-
-Отправь команду:
-```
-/help
-```
-
-В ответ должен прийти список команд.
-
-### 3. Тест Parser
-
-В n8n откройте **Workflow 2 (Parser)**, нажмите **Manual Trigger** и посмотри результат.
-
-Или в Telegram:
-```
-/parse 1
-```
-
-### 4. Проверь логи n8n
-
-```bash
-docker logs -f leadgen_n8n | tail -50
-```
+### Connections:
+Webhook → Extract Message → Switch
+Switch (4 branches) → [Parse List, Status, Stats, Help]
+All 4 → Format Response → Send Telegram
 
 ---
 
-## Структура воркфлоу
+## Workflow 2: Parser - Manual Trigger
 
-```
-Workflow 1: Telegram Bot
-  ├─ Webhook (получает сообщения из Telegram)
-  ├─ Switch (распознаёт команду: /parse, /status, /help)
-  ├─ Execute Command (запускает скрипт)
-  └─ Send Telegram (отправляет результат обратно)
+1. **Manual Trigger**
+2. **Execute - Parser** - Command: `cd /opt/leadgen && node scripts/parser/index.js --list`
+3. **Parse JSON** - Parse stdout to JSON
+4. **Send Telegram** - Chat: 5900706320
 
-Workflow 2: Parser (ручной запуск парсинга)
-  ├─ Manual Trigger
-  ├─ Execute Command: parser/index.js
-  └─ Send Telegram
-
-Workflow 3: Filter (ручной запуск фильтрации)
-  ├─ Manual Trigger
-  ├─ Execute Command: filter/index.js
-  └─ Send Telegram
-
-Workflow 4: Audit & Email (автоматический в 09:00)
-  ├─ Cron 09:00
-  ├─ Execute Command: audit/index.js
-  └─ Send Telegram
-
-Workflow 5: Follow-up Email (автоматический в 10:00)
-  ├─ Cron 10:00
-  ├─ Execute Command: email/followup.js
-  └─ Send Telegram
-
-Workflow 6: IMAP Listener (автоматический каждые 30 мин)
-  ├─ Cron */30
-  ├─ Execute Command: email/imap.js
-  └─ (Telegram алерты отправляются изнутри скрипта)
-```
+Connection: Manual → Execute → Parse → Send
 
 ---
 
-## Команды для тестирования в Telegram
+## Workflow 3: Filter - Manual Trigger
 
-```
-/help                    # Справка
-/parse                   # Список ниш
-/parse 1                 # Парсить нишу #1
-/parse 2                 # Парсить нишу #2
-/parse auto              # Автопарсинг (если < 100 qualified)
-/status                  # Статус системы
-/stats                   # Статистика по нишам
-```
+1. **Manual Trigger**
+2. **Execute - Filter** - Command: `cd /opt/leadgen && node scripts/filter/index.js --limit=100`
+3. **Parse JSON** - Parse stdout
+4. **Send Telegram** - Text: `✅ Filter completed\n...`
+
+Connection: Manual → Execute → Parse → Send
 
 ---
 
-## Troubleshooting
+## Workflow 4: Audit - Cron 09:00
 
-### Webhook не работает
+1. **Cron** - Mode: Cron, Expression: `0 9 * * *`, Timezone: Europe/Vilnius
+2. **Execute - Audit** - Command: `cd /opt/leadgen && node scripts/audit/index.js --batch=15`
+3. **Parse JSON**
+4. **Send Telegram** - Text: `📧 Audit completed (09:00)\n...`
 
-1. Проверь доступность n8n:
-```bash
-curl http://178.104.253.76:5678
-```
-
-2. Проверь статус webhook'а в Telegram:
-```bash
-curl -X GET "https://api.telegram.org/bot8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A/getWebhookInfo"
-```
-
-3. Смотри логи n8n:
-```bash
-docker logs -f leadgen_n8n
-```
-
-### Команда не выполняется
-
-Проверь, что скрипты находятся на месте:
-```bash
-docker exec leadgen_node ls -la /app/scripts/
-```
-
-### Ответ не приходит в Telegram
-
-1. Проверь Chat ID в воркфлоу (должна быть цифра: `5900706320`)
-2. Проверь, что бот добавлен в чат (@leadgenbot или как назовешь)
-3. Проверь токен бота
+Connection: Cron → Execute → Parse → Send
 
 ---
 
-## Дальнейшие шаги
+## Workflow 5: Followup - Cron 10:00
 
-После импорта и тестирования:
+1. **Cron** - Mode: Cron, Expression: `0 10 * * *`, Timezone: Europe/Vilnius
+2. **Execute - Followup** - Command: `cd /opt/leadgen && node scripts/email/followup.js`
+3. **Parse JSON**
+4. **Send Telegram** - Text: `📧 Followup emails sent (10:00)\n...`
 
-1. ✅ Все 6 воркфлоу активированы
-2. ✅ Telegram бот отвечает на команды
-3. 📋 Начинай разработку остальных модулей:
-   - День 5-6: Filter
-   - День 7-8: Audit + Letter
-   - День 9: Email Sender
-   - День 13-14: Админ-панель Web UI
+Connection: Cron → Execute → Parse → Send
+
+---
+
+## Workflow 6: IMAP - Every 30 Min
+
+1. **Cron** - Mode: Every, Interval: 30
+2. **Execute - IMAP** - Command: `cd /opt/leadgen && node scripts/email/imap.js`
+3. **Parse JSON** - Check for hasError field
+4. **If Error** - Condition: hasError == true
+5. **Send Error Alert** - Text: `⚠️ IMAP Error\n...`
+
+Connection: Cron → Execute → Parse → If → Send
+
+---
+
+## Telegram Credentials
+Bot Token: `8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A`
+
+## Webhook URL (for Telegram Bot workflow)
+After creating Workflow 1, copy webhook URL and run:
+```bash
+curl -X POST https://api.telegram.org/bot8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A/setWebhook \
+  -d "url=<WEBHOOK_URL>"
+```
+
+## Activate All Workflows
+Publish and toggle ON each workflow after creation.
