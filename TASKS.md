@@ -11,13 +11,13 @@
 ✅ Добавить SSH ключ в GitHub Secrets  
 ✅ Создать `docker-compose.yml`  
 ✅ Создать `.github/workflows/deploy.yml`  
-✅ Запустить `docker compose up -d postgres n8n node`  
-✅ Проверить n8n по IP  
-✅ Dockerfile с `npm ci`, зависимости устанавливаются
+✅ Запустить `docker compose up -d postgres node`  
+✅ Dockerfile с Chrome зависимостями для Puppeteer
 
 ## День 2 - База данных
 ✅ Написать `db/init.sql` с таблицами `niches`, `companies`, `parse_history`, `logs`  
-✅ Выполнить init SQL на VPS  
+✅ Добавлены колонки `total_pages`, `last_parsed_page` в `niches`  
+✅ Выполнить init SQL на VPS (ALTER TABLE для существующей БД)  
 ✅ Проверить, что таблицы созданы
 
 ## День 3 - Общие утилиты
@@ -27,11 +27,15 @@
 ✅ Проверить загрузку конфига и доступ к БД
 
 ## День 4 - Парсер rekvizitai.lt
-✅ `scripts/parser/scraper.js` - Puppeteer и пагинация  
+✅ `scripts/parser/scraper.js` - Puppeteer, пагинация по всем страницам, resume с последней страницы, глобальный parseState для трекинга  
 ✅ `scripts/parser/normalizer.js` - очистка email, phone, URL  
-✅ `scripts/parser/index.js` - CLI `--list`, `--niche=X`, `--auto`  
-✅ `db/niches_seed.sql` - seed 10 ниш  
-✅ `scripts/init-db.js` - инициализация БД с нишами
+✅ `scripts/parser/index.js` - CLI `--list`, `--niche=X`, `--auto`, экспорт getParseState  
+✅ `scripts/parser/discover-niches.js` - автопоиск ниш с 500+ фирм, экспорт getDiscoverState  
+✅ `scripts/parser/sync-categories.js` - синхронизация search_term с реальными URL ключами сайта  
+✅ `scripts/parser/fix-niches-mapping.sql` - правильный маппинг всех 50 ниш  
+✅ `db/niches_seed.sql` - seed 50 ниш (устарел, теперь используется /discover)  
+✅ Парсинг протестирован: ниша Restoranai ir Barai (359 стр)  
+✅ Дедупликация по `rekvizitai_url` (SELECT перед INSERT)
 
 ## День 5 - Фильтр часть 1
 📋 `scripts/filter/pagespeed.js` - PageSpeed API  
@@ -64,17 +68,15 @@
 
 ## День 10 - Telegram бот
 ✅ `scripts/bot/index.js` - Express сервер + setWebhook + запуск cron  
-✅ `scripts/bot/telegram.js` - обработчик команд: /status, /niches, /parse, /filter, /run, /pause, /resume, /history, /logs, /calls  
-✅ `scripts/bot/cron.js` - node-cron: parser 09:00, filter 30мин, audit 30мин, followup 10:00, imap 5мин  
-✅ `node-cron` добавлен в package.json  
-📋 Протестировать все команды после развёртывания на VPS
+✅ `scripts/bot/telegram.js` - все команды: /status, /niches, /parse, /parse_status, /reset_niche, /discover, /discover_status, /filter, /run, /pause, /resume, /history, /logs, /calls, /help  
+✅ `scripts/bot/cron.js` - node-cron расписания  
+✅ Все команды работают на VPS
 
 ## День 11 - HTTPS и домен
 ✅ DNS `A n8n -> 178.104.253.76`  
-✅ Caddy установлен на VPS и получает HTTPS (Let's Encrypt)  
-✅ `https://n8n.webvibe-lead.fun` доступен (Caddy проксирует на port 5678)  
-✅ Webhook инфраструктура переделана на Node.js бот с Express  
-📋 Задеплоить на VPS и проверить что бот отвечает в Telegram
+✅ Caddy установлен, HTTPS работает  
+✅ `https://n8n.webvibe-lead.fun` доступен  
+✅ Бот задеплоен, отвечает на команды в Telegram
 
 ## День 12 - IMAP входящие
 📋 `scripts/email/imap.js` - imapflow + сопоставление ответов + Telegram уведомление  
@@ -88,7 +90,7 @@
 📋 Исправить найденные баги
 
 ## День 14 - Запуск
-📋 Добавить 10-15 реальных ниш в БД  
+📋 `/discover` из Telegram — найти все ниши с 500+ фирм  
 📋 `/parse` первых 2-3 ниш  
 📋 Фильтрация  
 📋 `/run` первый batch 15 компаний  

@@ -2,119 +2,110 @@
 
 ## Текущий статус
 
-День 11 из 14. Telegram бот полностью реализован (Days 10-11). Требуется задеплоить на VPS и протестировать.
+День 11 из 14. Парсер и Telegram бот полностью работают. Следующий шаг — запустить `/discover` из Telegram чтобы найти все реальные ниши, потом начать фильтрацию (День 5-6).
 
 ---
 
 ## Что сделано в этой сессии
 
-- Создан `scripts/bot/index.js` — Express сервер на порту 5678, регистрирует webhook в Telegram, запускает cron
-- Создан `scripts/bot/telegram.js` — обработчик всех команд бота (/status, /niches, /parse, /filter, /run, /pause, /resume, /history, /logs, /calls, /help)
-- Создан `scripts/bot/cron.js` — node-cron расписания: parser 09:00, filter каждые 30 мин, audit каждые 30 мин, followup 10:00, imap каждые 5 мин
-- Добавлен `node-cron` в package.json
-- Обновлён `docker-compose.yml`: команда `node scripts/bot/index.js`, добавлен port mapping `5678:5678`
+### Парсер
+- `scraper.js` — полностью переписан: парсит все страницы (не 50), resume с последней страницы, глобальный `parseState` для live трекинга прогресса
+- Дедупликация по `rekvizitai_url` (SELECT перед INSERT) — раньше был ложный дедуп по имени
+- `parser/index.js` — передаёт `nicheName` в scraper, экспортирует `getParseState`
+
+### Ниши
+- `discover-niches.js` — новый скрипт: заходит на rekvizitai.vz.lt, проверяет каждую из ~291 категорий, добавляет в БД те где > 500 фирм. Имеет `discoverState` для live трекинга.
+- `sync-categories.js` — вспомогательный: синхронизирует search_term с реальными URL ключами сайта
+- `fix-niches-mapping.sql` — правильный маппинг всех 50 старых ниш к реальным ключам
+
+### Telegram бот (новые команды)
+- `/discover [min]` — запускает поиск ниш (по умолчанию min=500), работает в фоне, присылает результат
+- `/discover_status` — прогресс-бар поиска ниш (категория, %, найдено, добавлено)
+- `/parse_status` — прогресс-бар парсинга (страница, %, найдено, новых, время)
+- `/reset_niche <id>` — сброс ниши из Telegram (удаляет компании, сбрасывает прогресс)
+
+### БД
+- Добавлены колонки `total_pages`, `last_parsed_page` в таблицу `niches` (ALTER TABLE на VPS)
+- Уникальный индекс `idx_companies_rekvizitai_url` на `companies(rekvizitai_url)`
+
+---
+
+## Состояние VPS
+
+- Контейнеры: `leadgen_postgres` + `leadgen_node` запущены
+- БД: ниши и компании очищены (DELETE FROM companies; DELETE FROM niches)
+- Бот: работает, отвечает на команды
+- Код: актуальный (последний pull: commit 91f68c3)
+
+---
+
+## Следующий конкретный шаг
+
+**1. Запустить поиск ниш из Telegram:**
+```
+/discover
+```
+Подождать 10-15 минут, следить через `/discover_status`. Бот пришлёт результат.
+
+**2. После завершения — запустить парсинг первой ниши:**
+```
+/niches          <- посмотреть какие ниши добавились
+/parse <id>      <- запустить парсинг
+/parse_status    <- следить за прогрессом
+```
+
+**3. После накопления 500+ raw компаний — реализовать фильтрацию (День 5-6):**
+- `scripts/filter/pagespeed.js` — PageSpeed Insights API
+- `scripts/filter/screenshot.js` — Puppeteer скриншот
+- `scripts/filter/design.js` — Claude API оценка дизайна
+- `scripts/filter/index.js` — полный pipeline
 
 ---
 
 ## Архитектура бота
 
 ```
-Telegram message
-    ↓
-https://n8n.webvibe-lead.fun/webhook/telegram (Caddy HTTPS → port 5678)
-    ↓
-Express POST /webhook/telegram
-    ↓
-telegram.handleUpdate(req.body)
-    ↓
-switch(cmd) → handler function
-    ↓
-runScript('parser/index.js', ['--niche=1'])  ← child_process.execFile
-    ↓
-sendMessage(chatId, result)
+Telegram → https://n8n.webvibe-lead.fun/webhook/telegram (Caddy HTTPS → port 5678)
+    → Express POST /webhook/telegram
+    → telegram.handleUpdate(req.body)
+    → switch(cmd) → handler
 ```
 
-```
-Cron (node-cron)
-├── 09:00 daily   → parser/index.js --auto
-├── */30 * * * *  → filter/index.js --batch=10 (если файл существует)
-├── 15,45 * * * * → audit/index.js --batch=5 (если файл существует)
-├── 10:00 daily   → email/followup.js (если файл существует)
-└── */5 * * * *   → email/imap.js (если файл существует)
-```
-
-Нереализованные скрипты (filter, audit, followup, imap) — пропускаются тихо через `fs.existsSync` проверку.
-
----
-
-## Следующий конкретный шаг — деплой на VPS
-
-```bash
-# Подключиться к VPS
-ssh root@178.104.253.76
-
-# Перейти в папку проекта
-cd /opt/leadgen
-
-# Получить последние изменения
-git pull origin main
-
-# Пересобрать и перезапустить
-docker compose down
-docker compose up -d --build
-
-# Проверить логи
-docker logs -f leadgen_node
-```
-
-Ожидаемый вывод в логах:
-```
-[bot] Express сервер запущен на порту 5678
-[bot] Webhook зарегистрирован: https://n8n.webvibe-lead.fun/webhook/telegram
-[cron] Cron планировщик запущен (5 задач)
-[bot] Бот запущен, webhook зарегистрирован, cron активен
-```
-
-После этого написать `/help` в Telegram — бот должен ответить.
-
----
-
-## Тестирование команд
-
-После деплоя проверить последовательно:
-1. `/help` — должен показать список команд
-2. `/status` — должен показать статистику из БД
-3. `/niches` — должен показать список ниш
-4. `/parse 1` — должен запустить парсинг ниши #1
+Команды парсинга вызывают `parser.parseNiche()` / `discoverNiches()` напрямую в процессе (не через execFile — нет таймаута).
 
 ---
 
 ## Важные файлы
 
-**Актуальные:**
-- `scripts/bot/index.js` — точка входа
-- `scripts/bot/telegram.js` — команды бота
-- `scripts/bot/cron.js` — расписание
-- `scripts/shared/` — db.js, logger.js, config.js
-- `scripts/parser/` — полностью реализован
-- `docker-compose.yml` — postgres + node (port 5678)
+| Файл | Статус |
+|------|--------|
+| `scripts/bot/index.js` | ✅ точка входа, порт 5678 |
+| `scripts/bot/telegram.js` | ✅ все команды |
+| `scripts/bot/cron.js` | ✅ расписание |
+| `scripts/parser/scraper.js` | ✅ парсер с трекингом |
+| `scripts/parser/index.js` | ✅ оркестратор |
+| `scripts/parser/discover-niches.js` | ✅ поиск ниш |
+| `scripts/shared/db.js` | ✅ pg Pool |
+| `scripts/shared/logger.js` | ✅ логгер |
+| `scripts/filter/index.js` | 📋 не реализован |
+| `scripts/audit/index.js` | 📋 не реализован |
+| `scripts/email/sender.js` | 📋 не реализован |
 
 ---
 
 ## Блокеры
 
-- `scripts/filter/index.js` — не реализован (День 5-6)
-- `scripts/audit/index.js` — не реализован (День 7-8)
-- `scripts/email/followup.js` — не реализован (День 9)
-- `scripts/email/imap.js` — не реализован (День 12)
-
-Cron для этих скриптов тихо пропускает если файл не существует — бот не падает.
+- `scripts/filter/index.js` — не реализован (День 5-6), `/filter` команда возвращает заглушку
+- `scripts/audit/index.js` — не реализован (День 7-8), `/run` команда возвращает заглушку
+- `scripts/email/` — не реализован (День 9+)
 
 ---
 
-## Осторожно
+## Важные детали
 
-- Не возвращаться к n8n — убран полностью
-- Caddy уже настроен: `https://n8n.webvibe-lead.fun → localhost:5678`
-- Webhook URL зарегистрируется автоматически при старте бота
-- PORT по умолчанию 5678 (берётся из `process.env.PORT || 5678`)
+- `docker-compose restart node` — правильная команда (не `restart leadgen_node`)
+- `docker-compose down && docker-compose up -d` — если контейнер завис
+- logger.js — фабрика: `require('./shared/logger')('module')` возвращает `{info, warn, error}`
+- `db.one()` возвращает `null` если не найдено (не бросает исключение)
+- Puppeteer требует Chrome libs в Docker (уже установлены в Dockerfile)
+- VPS: 178.104.253.76, папка `/opt/leadgen`
