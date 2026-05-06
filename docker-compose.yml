@@ -31,7 +31,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: tail -f /dev/null
+    ports:
+      - "5678:5678"
+    command: node scripts/bot/index.js
 
 volumes:
   postgres_data:

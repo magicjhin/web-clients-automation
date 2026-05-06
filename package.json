@@ -9,13 +9,14 @@
     "audit": "node scripts/audit/index.js",
     "followup": "node scripts/email/followup.js",
     "imap": "node scripts/email/imap.js",
-    "telegram": "node scripts/telegram/bot.js"
+    "bot": "node scripts/bot/index.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "imapflow": "^1.0.171",
+    "node-cron": "^3.0.3",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^6.9.16",
     "pg": "^8.13.1",

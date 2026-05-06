@@ -31,6 +31,17 @@ async function getNicheById(id) {
   return db.one(query, [id]);
 }
 
+async function getNicheByName(name) {
+  const query = `
+    SELECT id, name, search_term, companies_found, status
+    FROM niches
+    WHERE LOWER(name) LIKE LOWER($1)
+    ORDER BY ai_rank ASC
+    LIMIT 1
+  `;
+  return db.one(query, [`%${name}%`]);
+}
+
 async function countQualifiedInQueue() {
   const query = `
     SELECT COUNT(*) as count FROM companies WHERE status = 'qualified' AND processed = false
@@ -171,4 +182,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { listNiches, parseNiche, parseAuto };
+module.exports = { listNiches, parseNiche, parseAuto, getNicheById, getNicheByName };

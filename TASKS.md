@@ -63,17 +63,18 @@
 📋 Тест: отправить письмо себе
 
 ## День 10 - Telegram бот
-📋 `scripts/bot/index.js` - Node.js webhook бот + cron планировщик  
-📋 Поддерживать команды `/status`, `/niches`, `/parse`, `/parse 1`, `/parse auto`, `/pause`, `/resume`, `/history`, `/logs`, `/calls`  
-📋 `/filter` и `/run` - заглушки (ждут реализации filter/index.js и audit/index.js)  
-📋 Протестировать все команды после развёртывания
+✅ `scripts/bot/index.js` - Express сервер + setWebhook + запуск cron  
+✅ `scripts/bot/telegram.js` - обработчик команд: /status, /niches, /parse, /filter, /run, /pause, /resume, /history, /logs, /calls  
+✅ `scripts/bot/cron.js` - node-cron: parser 09:00, filter 30мин, audit 30мин, followup 10:00, imap 5мин  
+✅ `node-cron` добавлен в package.json  
+📋 Протестировать все команды после развёртывания на VPS
 
 ## День 11 - HTTPS и домен
 ✅ DNS `A n8n -> 178.104.253.76`  
 ✅ Caddy установлен на VPS и получает HTTPS (Let's Encrypt)  
 ✅ `https://n8n.webvibe-lead.fun` доступен (Caddy проксирует на port 5678)  
-📋 Переделать webhook инфраструктуру: вместо n8n использовать Node.js бот с Express  
-📋 Установить Telegram webhook на `https://n8n.webvibe-lead.fun/webhook/telegram`
+✅ Webhook инфраструктура переделана на Node.js бот с Express  
+📋 Задеплоить на VPS и проверить что бот отвечает в Telegram
 
 ## День 12 - IMAP входящие
 📋 `scripts/email/imap.js` - imapflow + сопоставление ответов + Telegram уведомление  
