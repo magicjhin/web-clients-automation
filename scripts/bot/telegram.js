@@ -275,6 +275,107 @@ async function cmdCalls(chatId) {
   }
 }
 
+async function cmdParseStatus(chatId) {
+  const parser = require('../parser/index');
+  const state = parser.getParseState();
+
+  if (!state.active) {
+    try {
+      const rows = await db.many(`
+        SELECT id, name, status, companies_found, last_parsed_page, total_pages, updated_at
+        FROM niches
+        WHERE status IN ('parsing', 'completed')
+        ORDER BY updated_at DESC
+        LIMIT 5
+      `, []);
+
+      if (rows.length === 0) {
+        await sendMessage(chatId, '💤 Парсинг не запущен. Нет активных или завершённых ниш.');
+        return;
+      }
+
+      let text = '💤 *Парсинг не активен.*\n\n📜 Последние ниши:\n\n';
+      rows.forEach(r => {
+        const icon = r.status === 'completed' ? '✅' : '🔄';
+        const pages = r.total_pages > 0 ? `${r.last_parsed_page}/${r.total_pages} стр` : `${r.last_parsed_page} стр`;
+        text += `${icon} [${r.id}] *${r.name}*\n   Компаний: ${r.companies_found} | ${pages}\n\n`;
+      });
+
+      text += `_Сбросить нишу: /reset\\_niche <id>_`;
+      await sendMessage(chatId, text);
+    } catch (err) {
+      await sendMessage(chatId, `❌ Ошибка: ${err.message}`);
+    }
+    return;
+  }
+
+  const elapsed = Math.round((Date.now() - new Date(state.startedAt).getTime()) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const pagesLeft = state.totalPages > 0 ? state.totalPages - state.currentPage : '?';
+  const pct = state.totalPages > 0 ? Math.round((state.currentPage / state.totalPages) * 100) : 0;
+
+  const bar = state.totalPages > 0
+    ? '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10))
+    : '░░░░░░░░░░';
+
+  const text = `🔄 *Парсинг активен*
+
+📁 Ниша: *${state.nicheName || state.categoryKey}*
+📄 Страница: *${state.currentPage}* из *${state.totalPages || '?'}*
+📊 Прогресс: ${bar} ${pct}%
+🏢 Найдено: *${state.companiesFound}* (новых: *${state.companiesNew}*)
+⏱ Время: ${mins}м ${secs}с
+📌 Осталось страниц: ~${pagesLeft}`;
+
+  await sendMessage(chatId, text);
+}
+
+async function cmdResetNiche(chatId, arg) {
+  if (!arg) {
+    await sendMessage(chatId, '📋 Использование: `/reset_niche 67` — сбросить прогресс ниши по ID\n\nСписок ниш: /niches');
+    return;
+  }
+
+  const nicheId = parseInt(arg);
+  if (isNaN(nicheId)) {
+    await sendMessage(chatId, `❌ Неверный ID: "${arg}". Укажи числовой ID ниши.`);
+    return;
+  }
+
+  try {
+    const niche = await db.one('SELECT id, name, companies_found FROM niches WHERE id = $1', [nicheId]);
+    if (!niche) {
+      await sendMessage(chatId, `❌ Ниша #${nicheId} не найдена`);
+      return;
+    }
+
+    // Удаляем компании этой ниши
+    const deleted = await db.one(
+      'WITH del AS (DELETE FROM companies WHERE niche_id = $1 RETURNING id) SELECT COUNT(*) as count FROM del',
+      [nicheId]
+    );
+
+    // Сбрасываем прогресс ниши
+    await db.query(
+      `UPDATE niches SET status = 'pending', companies_found = 0, companies_qualified = 0,
+       last_parsed_page = 0, total_pages = 0, parsed_at = NULL, updated_at = NOW()
+       WHERE id = $1`,
+      [nicheId]
+    );
+
+    await sendMessage(chatId,
+      `✅ *Ниша сброшена*\n\n` +
+      `📁 Ниша: *${niche.name}* (ID: ${nicheId})\n` +
+      `🗑 Удалено компаний: *${deleted.count}*\n` +
+      `📌 Статус: pending (готова к повторному парсингу)\n\n` +
+      `Запусти: /parse ${nicheId}`
+    );
+  } catch (err) {
+    await sendMessage(chatId, `❌ Ошибка: ${err.message}`);
+  }
+}
+
 async function cmdPause(chatId) {
   try {
     await db.query(`INSERT INTO logs (level, module, message) VALUES ('warn', 'bot', 'System paused by user')`, []);
@@ -305,9 +406,13 @@ async function cmdHelp(chatId) {
 
 📊 *Информация*
 /status — статистика БД
+/parse\\_status — прогресс текущего парсинга
 /history — история парсинга
 /logs — последние логи
 /calls — компании для звонка
+
+🔧 *Управление данными*
+/reset\\_niche <id> — сбросить нишу (удалить компании, начать заново)
 
 🚀 *Pipeline _(скоро)_*
 /filter — запустить фильтрацию
@@ -341,6 +446,10 @@ async function handleUpdate(update) {
       return cmdNiches(chatId);
     case '/parse':
       return cmdParse(chatId, arg);
+    case '/parse_status':
+      return cmdParseStatus(chatId);
+    case '/reset_niche':
+      return cmdResetNiche(chatId, arg);
     case '/filter':
       return cmdFilter(chatId, arg);
     case '/run':

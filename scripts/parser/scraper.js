@@ -8,10 +8,53 @@ const log = require('../shared/logger')('scraper');
 
 const BASE_URL = 'https://rekvizitai.vz.lt';
 
-async function scrapeNiche(categoryKey, nicheId) {
+// Глобальное состояние активного парсинга (один парсинг за раз)
+const parseState = {
+  active: false,
+  nicheId: null,
+  nicheName: null,
+  categoryKey: null,
+  currentPage: 0,
+  totalPages: 0,
+  companiesFound: 0,
+  companiesNew: 0,
+  startedAt: null,
+  lastPageAt: null,
+};
+
+function getParseState() {
+  return { ...parseState };
+}
+
+function resetParseState() {
+  parseState.active = false;
+  parseState.nicheId = null;
+  parseState.nicheName = null;
+  parseState.categoryKey = null;
+  parseState.currentPage = 0;
+  parseState.totalPages = 0;
+  parseState.companiesFound = 0;
+  parseState.companiesNew = 0;
+  parseState.startedAt = null;
+  parseState.lastPageAt = null;
+}
+
+async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
   let browser;
   let companiesNew = 0;
   let companiesFound = 0;
+
+  // Обновляем глобальное состояние
+  parseState.active = true;
+  parseState.nicheId = nicheId;
+  parseState.nicheName = nicheName;
+  parseState.categoryKey = categoryKey;
+  parseState.currentPage = 0;
+  parseState.totalPages = 0;
+  parseState.companiesFound = 0;
+  parseState.companiesNew = 0;
+  parseState.startedAt = new Date();
+  parseState.lastPageAt = null;
 
   try {
     browser = await puppeteer.launch({
@@ -62,6 +105,7 @@ async function scrapeNiche(categoryKey, nicheId) {
       }
     }
 
+    parseState.totalPages = totalPages;
     await log.info(`Всего страниц: ${totalPages}, начинаем с страницы: ${startPage}`);
 
     // Парсим каждую страницу
@@ -106,6 +150,9 @@ async function scrapeNiche(categoryKey, nicheId) {
 
         await log.info(`Страница ${pageNum}/${totalPages}: найдено ${companies.length} компаний`);
         companiesFound += companies.length;
+        parseState.currentPage = pageNum;
+        parseState.companiesFound = companiesFound;
+        parseState.lastPageAt = new Date();
 
         for (const company of companies) {
           try {
@@ -124,6 +171,7 @@ async function scrapeNiche(categoryKey, nicheId) {
                 [nicheId, company.name, company.company_code || null, company.rekvizitai_url || null]
               );
               companiesNew++;
+              parseState.companiesNew = companiesNew;
             }
           } catch (insertError) {
             await log.warn(`Не удалось вставить: ${company.name} — ${insertError.message}`);
@@ -142,15 +190,17 @@ async function scrapeNiche(categoryKey, nicheId) {
     }
 
     await log.info(`✅ Завершён парсинг "${categoryKey}": ${companiesFound} компаний (${companiesNew} новых)`);
+    resetParseState();
 
     return { companiesFound, companiesNew, categoryKey };
 
   } catch (error) {
     await log.error(`Критическая ошибка при парсинге "${categoryKey}": ${error.message}`);
+    resetParseState();
     throw error;
   } finally {
     if (browser) await browser.close();
   }
 }
 
-module.exports = { scrapeNiche };
+module.exports = { scrapeNiche, getParseState };

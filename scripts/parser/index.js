@@ -94,7 +94,7 @@ async function parseNiche(nicheId) {
     await log.info(`Запуск парсинга нише: ${niche.name} (search_term: ${niche.search_term})`);
 
     // Запускаю scraper
-    const result = await scraper.scrapeNiche(niche.search_term, nicheId);
+    const result = await scraper.scrapeNiche(niche.search_term, nicheId, niche.name);
 
     // Обновляю статус на 'completed'
     await updateNicheStatus(nicheId, 'completed');
@@ -181,4 +181,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { listNiches, parseNiche, parseAuto, getNicheById, getNicheByName };
+module.exports = { listNiches, parseNiche, parseAuto, getNicheById, getNicheByName, getParseState: scraper.getParseState };
