@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(ssh -i \"C:\\\\Users\\\\aleks\\\\.ssh\\\\id_rsa\" -o StrictHostKeyChecking=no root@178.104.253.76 \"cd /opt/leadgen && git pull && docker-compose down && docker-compose up -d\")",
+      "WebFetch(domain:github.com)",
+      "Bash(ssh -o StrictHostKeyChecking=no root@178.104.253.76 \"cat ~/.ssh/id_ed25519\")",
+      "Bash(ssh root@178.104.253.76 \"cd /opt/leadgen && psql -U leadgen -d leadgen_app -f db/niches_seed.sql\")"
+    ]
+  }
+}

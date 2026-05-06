@@ -5,25 +5,26 @@
 ---
 
 ## День 1 — VPS + Git + Docker
-📋 Установить Docker + Docker Compose + Git на VPS
-📋 git clone репо на VPS в /opt/leadgen
-📋 Загрузить .env на VPS вручную (scp)
-📋 Добавить SSH ключ в GitHub Secrets
-📋 Создать docker-compose.yml
-📋 Создать .github/workflows/deploy.yml
-📋 docker-compose up -d postgres n8n
-📋 Проверить n8n: http://178.104.253.76:5678
+✅ Установить Docker + Docker Compose + Git на VPS
+✅ git clone репо на VPS в /opt/leadgen
+✅ Загрузить .env на VPS вручную (scp)
+✅ Добавить SSH ключ в GitHub Secrets
+✅ Создать docker-compose.yml
+✅ Создать .github/workflows/deploy.yml
+✅ docker-compose up -d postgres n8n node
+✅ Проверить n8n: http://178.104.253.76:5678
+✅ Dockerfile с npm ci, npm установлен успешно
 
 ## День 2 — База данных
-📋 Написать db/init.sql (4 таблицы: niches, companies, parse_history, logs)
-📋 Выполнить init.sql на VPS
-📋 Вставить тестовую нишу, проверить таблицы
+✅ Написать db/init.sql (4 таблицы: niches, companies, parse_history, logs)
+✅ Выполнить init.sql на VPS
+✅ Проверка: 4 таблицы созданы в leadgen_app БД
 
 ## День 3 — Общие утилиты
-📋 scripts/shared/db.js — pg Pool, query helper
-📋 scripts/shared/logger.js — запись в logs + console
-📋 scripts/shared/config.js — загрузка .env
-📋 Тест: подключиться к БД, вставить тестовый лог
+✅ scripts/shared/db.js — pg Pool, query helper
+✅ scripts/shared/logger.js — запись в logs + console
+✅ scripts/shared/config.js — загрузка .env
+✅ Тест: конфиг загружается, БД доступна
 
 ## День 4 — Парсер (rekvizitai.lt)
 📋 scripts/parser/scraper.js — Puppeteer, пагинация

@@ -3,26 +3,26 @@
 
 CREATE TABLE IF NOT EXISTS niches (
     id SERIAL PRIMARY KEY,
-    name_lt VARCHAR(255) NOT NULL,
-    name_ru VARCHAR(255),
-    url_slug VARCHAR(255) UNIQUE NOT NULL,
-    total_companies INT DEFAULT 0,
-    ai_score INT,
-    ai_reasoning TEXT,
+    name VARCHAR(255) NOT NULL,
+    search_term VARCHAR(255) NOT NULL,
+    ai_rank INT,
     status VARCHAR(50) DEFAULT 'pending',
-    parsed_at TIMESTAMP,
     companies_found INT DEFAULT 0,
     companies_qualified INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
+    parsed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS companies (
     id SERIAL PRIMARY KEY,
+    niche_id INT REFERENCES niches(id) ON DELETE SET NULL,
     name VARCHAR(255) NOT NULL,
+    company_code VARCHAR(50),
+    rekvizitai_url VARCHAR(512),
     website VARCHAR(512),
     email VARCHAR(255),
     phone VARCHAR(50),
-    niche_id INT REFERENCES niches(id) ON DELETE SET NULL,
 
     company_status VARCHAR(50),
     has_tax_debt BOOLEAN,
