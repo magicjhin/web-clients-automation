@@ -1,0 +1,95 @@
+{
+  "name": "Filter - Manual Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTip": ""
+      },
+      "id": "5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/filter/index.js --limit=100"
+      },
+      "id": "7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e",
+      "name": "Execute - Filter",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "let result = {};\ntry {\n  const stdout = $input.first().json.stdout;\n  if (stdout) {\n    result = JSON.parse(stdout);\n  } else {\n    result = { message: 'Фильтрация завершена' };\n  }\n} catch (e) {\n  result = { message: $input.first().json.stdout || 'Error' };\n}\nreturn { json: result };"
+      },
+      "id": "9c0d1e2f-3a4b-5c6d-7e8f-9a0b1c2d3e4f",
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "credentialType": "telegramBotApi",
+        "resource": "message",
+        "chatId": "5900706320",
+        "text": "✅ *Фильтрация завершена*\\n\\n{{ JSON.stringify($node[\"Parse JSON\"].json, null, 2) }}",
+        "parseMode": "Markdown"
+      },
+      "id": "0d1e2f3a-4b5c-6d7e-8f9a-0b1c2d3e4f5a",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": [
+      [
+        {
+          "node": "Execute - Filter",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - Filter": [
+      [
+        {
+          "node": "Parse JSON",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Parse JSON": [
+      [
+        {
+          "node": "Send Telegram",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  ],
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

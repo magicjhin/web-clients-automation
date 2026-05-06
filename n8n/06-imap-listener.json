@@ -1,0 +1,129 @@
+{
+  "name": "IMAP Listener - Cron Every 30 Min",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "every",
+        "interval": [
+          30
+        ],
+        "timezone": "Europe/Vilnius"
+      },
+      "id": "9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d",
+      "name": "Cron - Every 30 Min",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/email/imap.js"
+      },
+      "id": "0b1c2d3e-4f5a-6b7c-8d9e-0f1a2b3c4d5e",
+      "name": "Execute - IMAP",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "let result = {};\nconst stdout = $input.first().json.stdout || '';\nconst stderr = $input.first().json.stderr || '';\n\ntry {\n  if (stdout) {\n    result = JSON.parse(stdout);\n  } else if (stderr && stderr.includes('error')) {\n    result = { error: stderr, hasError: true };\n  } else {\n    result = { message: 'IMAP проверка выполнена' };\n  }\n} catch (e) {\n  result = { message: stdout || 'IMAP проверка выполнена', hasError: stderr ? true : false };\n}\n\nreturn { json: result };"
+      },
+      "id": "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "key": "hasError",
+              "condition": "equals",
+              "value": true
+            }
+          ]
+        }
+      },
+      "id": "2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a",
+      "name": "If Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "credentialType": "telegramBotApi",
+        "resource": "message",
+        "chatId": "5900706320",
+        "text": "⚠️ *IMAP Ошибка*\\n\\n{{ JSON.stringify($node[\"Parse JSON\"].json.error) }}",
+        "parseMode": "Markdown"
+      },
+      "id": "3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Cron - Every 30 Min": [
+      [
+        {
+          "node": "Execute - IMAP",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - IMAP": [
+      [
+        {
+          "node": "Parse JSON",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Parse JSON": [
+      [
+        {
+          "node": "If Error",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "If Error": [
+      [
+        {
+          "node": "Send Error Alert",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  ],
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

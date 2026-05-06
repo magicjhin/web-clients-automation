@@ -1,0 +1,228 @@
+{
+  "name": "Telegram Bot - Command Router",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "telegram-bot",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-telegram-01",
+      "name": "Webhook - Telegram",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const msg = $input.first().json.message;\nreturn {\n  json: {\n    text: msg.text || '',\n    chatId: msg.chat.id,\n    userId: msg.from.id,\n    messageId: msg.message_id\n  }\n};"
+      },
+      "id": "extract-msg-01",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [\n            {\n              \"key\": \"text\",\n              \"condition\": \"contains\",\n              \"value\": \"/parse\"\n            },\n            {\n              \"key\": \"text\",\n              \"condition\": \"contains\",\n              \"value\": \"/status\"\n            },\n            {\n              \"key\": \"text\",\n              \"condition\": \"contains\",\n              \"value\": \"/stats\"\n            },\n            {\n              \"key\": \"text\",\n              \"condition\": \"contains\",\n              \"value\": \"/help\"\n            }\n          ]\n        }\n      },
+      "id": "switch-cmd-01",
+      "name": "Switch - Command Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/parser/index.js --list"
+      },
+      "id": "exec-parse-list-01",
+      "name": "Execute - Parse List",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        850,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/parser/index.js --status"
+      },
+      "id": "exec-status-01",
+      "name": "Execute - Status",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        850,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/parser/index.js --stats"
+      },
+      "id": "exec-stats-01",
+      "name": "Execute - Stats",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return {\n  json: {\n    message: `🤖 *Leadgen Bot* — управление системой\\n\\n*Команды:*\\n📊 /parse — показать топ 5 ниш\\n📊 /parse 1 — парсить нишу #1\\n🔄 /parse auto — автопарсинг\\n📈 /status — статус всех процессов\\n📋 /stats — статистика по нишам\\n❓ /help — эта справка`\n  }\n};"
+      },
+      "id": "format-help-01",
+      "name": "Format - Help Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "let result = $input.first().json;\nlet text = '';\n\nif (typeof result === 'string') {\n  text = result;\n} else if (result.message) {\n  text = result.message;\n} else if (result.error) {\n  text = `❌ ${result.error}`;\n} else {\n  text = JSON.stringify(result, null, 2);\n}\n\nreturn {\n  json: {\n    text: text,\n    chatId: $node[\"Extract Message\"].json.chatId\n  }\n};"
+      },
+      "id": "format-response-01",
+      "name": "Format - Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "credentialType": "telegramBotApi",
+        "resource": "message",
+        "chatId": "{{ $node[\"Format - Response\"].json.chatId }}",
+        "text": "{{ $node[\"Format - Response\"].json.text }}",
+        "parseMode": "Markdown"
+      },
+      "id": "send-telegram-01",
+      "name": "Send - Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Telegram": [
+      [
+        {
+          "node": "Extract Message",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Extract Message": [
+      [
+        {
+          "node": "Switch - Command Router",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Switch - Command Router": [
+      [
+        {
+          "node": "Execute - Parse List",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "Execute - Status",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "Execute - Stats",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "Format - Help Message",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - Parse List": [
+      [
+        {
+          "node": "Format - Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - Status": [
+      [
+        {
+          "node": "Format - Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - Stats": [
+      [
+        {
+          "node": "Format - Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Format - Help Message": [
+      [
+        {
+          "node": "Format - Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Format - Response": [
+      [
+        {
+          "node": "Send - Telegram Message",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
