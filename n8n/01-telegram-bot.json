@@ -1,176 +1,232 @@
 {
-  "name": "Telegram Bot - Command Router",
+  "name": "Telegram Bot - All Commands",
   "nodes": [
     {
       "parameters": {
-        "path": "telegram-bot",
-        "authentication": "headerAuth",
-        "options": {}
+        "mode": "interval",
+        "interval": 2
       },
-      "id": "webhook-telegram",
-      "name": "Webhook - Telegram",
-      "type": "n8n-nodes-base.webhook",
+      "id": "interval-trigger",
+      "name": "Interval - 2 sec",
+      "type": "n8n-nodes-base.interval",
       "typeVersion": 1,
       "position": [250, 300]
     },
     {
       "parameters": {
-        "functionCode": "const msg = $input.first().json.message;\nreturn {\n  json: {\n    text: msg.text || '',\n    chatId: msg.chat.id,\n    userId: msg.from.id,\n    messageId: msg.message_id\n  }\n};"
+        "method": "GET",
+        "url": "https://api.telegram.org/bot8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A/getUpdates?offset=-1&timeout=0"
+      },
+      "id": "get-updates",
+      "name": "Get Updates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const result = $input.first().json;\nif (!result.result || result.result.length === 0) return null;\nconst update = result.result[0];\nconst msg = update.message;\nif (!msg || !msg.text) return null;\nreturn {json: {text: msg.text, chatId: msg.chat.id, messageId: msg.message_id, updateId: update.update_id}};"
       },
       "id": "extract-msg",
       "name": "Extract Message",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [650, 300]
     },
     {
       "parameters": {
         "conditions": {
           "conditions": [
             {
-              "key": "text",
-              "condition": "contains",
-              "value": "/parse"
-            },
-            {
-              "key": "text",
-              "condition": "contains",
+              "key": "json.text",
+              "condition": "starts",
               "value": "/status"
-            },
-            {
-              "key": "text",
-              "condition": "contains",
-              "value": "/stats"
-            },
-            {
-              "key": "text",
-              "condition": "contains",
-              "value": "/help"
             }
           ]
         }
       },
       "id": "switch-cmd",
-      "name": "Switch - Command Router",
+      "name": "Switch - Command",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
-      "position": [650, 300]
+      "position": [850, 300]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "http://178.104.253.76:3333/execute",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "command",
-              "value": "node scripts/parser/index.js"
-            },
-            {
-              "name": "args",
-              "value": {
-                "list": true
-              }
-            }
-          ]
-        }
-      },
-      "id": "exec-parse",
-      "name": "Execute - Parse",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [850, 100]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "command",
-              "value": "node scripts/parser/index.js"
-            },
-            {
-              "name": "args",
-              "value": {
-                "status": true
-              }
-            }
-          ]
-        }
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=status\"}"
       },
       "id": "exec-status",
-      "name": "Execute - Status",
+      "name": "Execute - /status",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [850, 250]
+      "position": [1050, 100]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "http://178.104.253.76:3333/execute",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "command",
-              "value": "node scripts/parser/index.js"
-            },
-            {
-              "name": "args",
-              "value": {
-                "stats": true
-              }
-            }
-          ]
-        }
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=niches\"}"
       },
-      "id": "exec-stats",
-      "name": "Execute - Stats",
+      "id": "exec-niches",
+      "name": "Execute - /niches",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [850, 400]
+      "position": [1050, 200]
     },
     {
       "parameters": {
-        "functionCode": "return {\n  json: {\n    message: '🤖 *Leadgen Bot*\\n\\n*Команды:*\\n📊 /parse\\n📊 /parse 1\\n🔄 /parse auto\\n📈 /status\\n📋 /stats\\n❓ /help'\n  }\n};"
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/parser/index.js\"}"
       },
-      "id": "format-help",
-      "name": "Format - Help",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [850, 550]
-    },
-    {
-      "parameters": {
-        "functionCode": "let result = $input.first().json;\nlet text = '';\nif (typeof result === 'string') {\n  text = result;\n} else if (result.message) {\n  text = result.message;\n} else if (result.error) {\n  text = 'Error: ' + result.error;\n} else {\n  text = JSON.stringify(result, null, 2);\n}\nreturn {\n  json: {\n    text: text,\n    chatId: $node['Extract Message'].json.chatId\n  }\n};"
-      },
-      "id": "format-response",
-      "name": "Format - Response",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
+      "id": "exec-parse",
+      "name": "Execute - /parse",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
       "position": [1050, 300]
     },
     {
       "parameters": {
-        "resource": "message",
-        "botToken": "8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A",
-        "chatId": "5900706320",
-        "text": "{{ $node['Format - Response'].json.text }}",
-        "parseMode": "Markdown"
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/filter/index.js\"}"
+      },
+      "id": "exec-filter",
+      "name": "Execute - /filter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/audit/index.js --batch=15\"}"
+      },
+      "id": "exec-run",
+      "name": "Execute - /run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=pause\"}"
+      },
+      "id": "exec-pause",
+      "name": "Execute - /pause",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=resume\"}"
+      },
+      "id": "exec-resume",
+      "name": "Execute - /resume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=history\"}"
+      },
+      "id": "exec-history",
+      "name": "Execute - /history",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=logs\"}"
+      },
+      "id": "exec-logs",
+      "name": "Execute - /logs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 900]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=calls\"}"
+      },
+      "id": "exec-calls",
+      "name": "Execute - /calls",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 1000]
+    },
+    {
+      "parameters": {
+        "functionCode": "let text = '';\nconst input = $input.first().json;\nif (input.message) {\n  text = input.message;\n} else if (input.error) {\n  text = '❌ Error: ' + input.error;\n} else if (input.raw) {\n  text = input.raw;\n} else if (typeof input === 'string') {\n  text = input;\n} else {\n  text = JSON.stringify(input, null, 2);\n}\nreturn {json: {text: text || 'Command executed', chatId: $node['Extract Message'].json.chatId, messageId: $node['Extract Message'].json.messageId}};"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A/sendMessage",
+        "sendBody": true,
+        "contentType": "application/json",
+        "body": "{\"chat_id\":\"{{ $node['Format Response'].json.chatId }}\",\"text\":\"{{ $node['Format Response'].json.text }}\"}"
       },
       "id": "send-telegram",
-      "name": "Send - Telegram",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1,
-      "position": [1250, 300]
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 500]
     }
   ],
   "connections": {
-    "Webhook - Telegram": [
+    "Interval - 2 sec": [
+      [
+        {
+          "node": "Get Updates",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Get Updates": [
       [
         {
           "node": "Extract Message",
@@ -182,82 +238,160 @@
     "Extract Message": [
       [
         {
-          "node": "Switch - Command Router",
+          "node": "Switch - Command",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Switch - Command Router": [
+    "Switch - Command": [
       [
         {
-          "node": "Execute - Parse",
+          "node": "Execute - /status",
           "type": "main",
           "index": 0
-        }
-      ],
-      [
+        },
         {
-          "node": "Execute - Status",
+          "node": "Execute - /niches",
           "type": "main",
-          "index": 0
-        }
-      ],
-      [
+          "index": 1
+        },
         {
-          "node": "Execute - Stats",
+          "node": "Execute - /parse",
           "type": "main",
-          "index": 0
+          "index": 2
+        },
+        {
+          "node": "Execute - /filter",
+          "type": "main",
+          "index": 3
+        },
+        {
+          "node": "Execute - /run",
+          "type": "main",
+          "index": 4
+        },
+        {
+          "node": "Execute - /pause",
+          "type": "main",
+          "index": 5
+        },
+        {
+          "node": "Execute - /resume",
+          "type": "main",
+          "index": 6
+        },
+        {
+          "node": "Execute - /history",
+          "type": "main",
+          "index": 7
+        },
+        {
+          "node": "Execute - /logs",
+          "type": "main",
+          "index": 8
+        },
+        {
+          "node": "Execute - /calls",
+          "type": "main",
+          "index": 9
         }
-      ],
+      ]
+    ],
+    "Execute - /status": [
       [
         {
-          "node": "Format - Help",
+          "node": "Format Response",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Execute - Parse": [
+    "Execute - /niches": [
       [
         {
-          "node": "Format - Response",
+          "node": "Format Response",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Execute - Status": [
+    "Execute - /parse": [
       [
         {
-          "node": "Format - Response",
+          "node": "Format Response",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Execute - Stats": [
+    "Execute - /filter": [
       [
         {
-          "node": "Format - Response",
+          "node": "Format Response",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Format - Help": [
+    "Execute - /run": [
       [
         {
-          "node": "Format - Response",
+          "node": "Format Response",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Format - Response": [
+    "Execute - /pause": [
       [
         {
-          "node": "Send - Telegram",
+          "node": "Format Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - /resume": [
+      [
+        {
+          "node": "Format Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - /history": [
+      [
+        {
+          "node": "Format Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - /logs": [
+      [
+        {
+          "node": "Format Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - /calls": [
+      [
+        {
+          "node": "Format Response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Format Response": [
+      [
+        {
+          "node": "Send Telegram",
           "type": "main",
           "index": 0
         }

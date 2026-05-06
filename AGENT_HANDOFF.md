@@ -1,45 +1,67 @@
 # Agent Handoff
 
 ## Текущий статус
-День 0 из 14. Проект только создан, код ещё не написан.
+День 11 из 14. Все 6 n8n воркфлоу готовы к импорту.
 
 ## Сделано в этой сессии
-- Создана структура документации проекта
-- Написан CLAUDE.md (краткий entry point)
-- Написан TASKS.md (прогресс по 14 дням)
-- Написан AGENT_HANDOFF.md (этот файл)
-- Написана docs/ документация (ARCHITECTURE, DATABASE, WORKFLOWS, DEPLOY)
+- ✅ Переписаны все 6 воркфлоу n8n с правильной логикой
+- ✅ Главный бот (01-telegram-bot.json) поддерживает все 10 команд
+- ✅ Остальные 5 воркфлоу используют правильный JSON body format
+- ✅ HTTP executor поддерживается на VPS (port 3333)
+- ✅ Создана docs/N8N_IMPORT.md (инструкция импорта)
+- ✅ Создана WORKFLOWS_SUMMARY.md (краткое резюме)
+- ✅ Обновлена TASKS.md (День 11 отмечен как готов)
+
+## Что переделано
+| Проблема | Решение |
+|----------|---------|
+| `bodyParameters` (старый формат) | JSON `body` с `contentType: application/json` |
+| `n8n-nodes-base.telegram` (требует credentials) | Прямые HTTP POST к Telegram API |
+| Единственная команда `/parse` | Все 10 команд в одном боте со Switch |
+| Дублирование сообщений | `offset=-1` в getUpdates (только новые) |
+| Импорт невозможен | Файлы готовы к прямому импорту в n8n UI |
 
 ## Следующий шаг
-**День 1: Создать базовые файлы проекта и задеплоить на VPS**
+**День 11-12: Импортировать и активировать все 6 воркфлоу в n8n**
 
 Порядок действий:
-1. Создать `docker-compose.yml`
-2. Создать `.env.example`
-3. Создать `.gitignore`
-4. Создать `.github/workflows/deploy.yml`
-5. Push в main
-6. SSH на VPS, склонировать репо, запустить Docker
+1. Открыть n8n UI: http://178.104.253.76:5678
+2. Импортировать 01-telegram-bot.json (главный бот)
+3. Активировать его
+4. Импортировать оставшиеся 5 воркфлоу
+5. Активировать все остальные
+6. Протестировать через Telegram: `/status`
 
-Команда для проверки после деплоя:
-```bash
-ssh root@178.104.253.76 "docker ps"
+**Инструкция:** см. docs/N8N_IMPORT.md
+
+## Файлы готовы к импорту
+```
+✅ n8n/01-telegram-bot.json  (10 команд)
+✅ n8n/02-parser.json        (Cron 09:00)
+✅ n8n/03-filter.json        (Interval 30 мин)
+✅ n8n/04-audit.json         (Interval 30 мин)
+✅ n8n/05-followup.json      (Cron 10:00)
+✅ n8n/06-imap.json          (Interval 5 мин)
 ```
 
 ## Последняя ошибка
-Нет.
+Нет. Все воркфлоу готовы.
 
 ## Изменённые файлы в этой сессии
-- CLAUDE.md (создан)
-- TASKS.md (создан)
-- AGENT_HANDOFF.md (создан)
-- docs/ARCHITECTURE.md (создан)
-- docs/DATABASE.md (создан)
-- docs/WORKFLOWS.md (создан)
-- docs/DEPLOY.md (создан)
+- n8n/01-telegram-bot.json (переписан с поддержкой 10 команд)
+- n8n/02-parser.json (обновлен JSON body format)
+- n8n/03-filter.json (обновлен JSON body format)
+- n8n/04-audit.json (обновлен JSON body format)
+- n8n/05-followup.json (обновлен JSON body format)
+- n8n/06-imap.json (обновлен JSON body format)
+- docs/N8N_IMPORT.md (создан - инструкция импорта)
+- WORKFLOWS_SUMMARY.md (создан - резюме изменений)
+- TASKS.md (обновлен День 11)
+- scripts/import-workflows.js (создан опционально)
 
 ## Контекст для быстрого старта
-- Репо: https://github.com/magicjhin/web-clients-automation.git
-- VPS: 178.104.253.76, Ubuntu, root доступ по SSH
-- Все детали архитектуры в docs/ARCHITECTURE.md
-- Полная схема БД в docs/DATABASE.md
+- VPS: 178.104.253.76, port 3333 для HTTP executor
+- n8n UI: http://178.104.253.76:5678
+- Telegram Bot Token: уже в воркфлоу (не менять)
+- Chat ID: 5900706320 (для Telegram уведомлений)
+- Все детали в docs/N8N_IMPORT.md и WORKFLOWS_SUMMARY.md

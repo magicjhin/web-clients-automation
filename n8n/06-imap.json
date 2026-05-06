@@ -17,14 +17,8 @@
         "method": "POST",
         "url": "http://178.104.253.76:3333/execute",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "command",
-              "value": "node scripts/email/imap.js"
-            }
-          ]
-        }
+        "contentType": "application/json",
+        "body": "{\"command\":\"node scripts/email/imap.js\"}"
       },
       "id": "exec-imap",
       "name": "Execute - IMAP",

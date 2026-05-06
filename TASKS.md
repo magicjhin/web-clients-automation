@@ -68,13 +68,15 @@
 📋 Тест: все команды возвращают ожидаемый ответ
 
 ## День 11 — n8n воркфлоу
-🔄 Воркфлоу 1: Telegram бот — импортирован в n8n UI, все 9 узлов видны (Webhook, Extract Message, Switch, 3x Execute, 2x Format, Telegram Send)
-📋 Воркфлоу 2: Парсинг (Schedule 09:00 → Execute Command)
-📋 Воркфлоу 3: Фильтрация (Schedule 30 мин → Execute Command)
-📋 Воркфлоу 4: Аудит (Schedule 30 мин → Execute Command)
-📋 Воркфлоу 5: Повторные письма (Cron 10:00 → Execute Command)
-📋 Воркфлоу 6: IMAP (Schedule 5 мин → Execute Command)
-📋 scripts/email/followup.js
+✅ Воркфлоу 1: Telegram бот (все 10 команд) — готов к импорту
+✅ Воркфлоу 2: Парсинг (Cron 09:00 → Execute Command)
+✅ Воркфлоу 3: Фильтрация (Interval 30 мин → Execute Command)
+✅ Воркфлоу 4: Аудит (Interval 30 мин → Execute Command)
+✅ Воркфлоу 5: Повторные письма (Cron 10:00 → Execute Command)
+✅ Воркфлоу 6: IMAP (Interval 5 мин → Execute Command)
+✅ docs/N8N_IMPORT.md — инструкция импорта
+📋 Импортировать все 6 воркфлоу в n8n UI
+📋 Активировать все воркфлоу
 
 ## День 12 — IMAP входящие
 📋 scripts/email/imap.js — imapflow + сопоставление + Telegram уведомление
