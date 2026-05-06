@@ -64,21 +64,17 @@
 📋 Тест: отправить письмо себе
 
 ## День 10 - Telegram бот
-🔄 `scripts/telegram/command.js` - короткий CLI для n8n webhook-команд  
-✅ Поддержаны команды `/status`, `/niches`, `/parse`, `/parse 1`, `/parse auto`, `/pause`, `/resume`, `/history`, `/logs`, `/calls`  
-🔄 `/filter` и `/run` пока возвращают сообщение-заглушку, потому что `scripts/filter/index.js` и `scripts/audit/index.js` еще не реализованы  
-📋 Протестировать все команды после подключения HTTPS webhook
+📋 `scripts/bot/index.js` - Node.js webhook бот + cron планировщик  
+📋 Поддерживать команды `/status`, `/niches`, `/parse`, `/parse 1`, `/parse auto`, `/pause`, `/resume`, `/history`, `/logs`, `/calls`  
+📋 `/filter` и `/run` - заглушки (ждут реализации filter/index.js и audit/index.js)  
+📋 Протестировать все команды после развёртывания
 
-## День 11 - n8n workflow
-✅ Создан новый `n8n/Telegram Bot - Command Router.json` без `Interval` и `getUpdates`  
-✅ Workflow переведен на `Telegram Webhook -> Route Command -> HTTP Executor -> Send Telegram`  
-✅ Исправлена причина бесконечных сообщений: polling через interval больше не используется  
-✅ `docker-compose.yml` настроен на `https://n8n.webvibe-lead.fun`  
-✅ `docs/SIMPLE_IMPORT.md` обновлен под домен `webvibe-lead.fun`, Caddy и Telegram webhook  
-🔄 Настроить DNS `A n8n -> 178.104.253.76`  
-🔄 Поставить Caddy на VPS и получить HTTPS  
-🔄 Импортировать webhook workflow в n8n и активировать  
-🔄 Установить Telegram webhook на `https://n8n.webvibe-lead.fun/webhook/telegram-bot`
+## День 11 - HTTPS и домен
+✅ DNS `A n8n -> 178.104.253.76`  
+✅ Caddy установлен на VPS и получает HTTPS (Let's Encrypt)  
+✅ `https://n8n.webvibe-lead.fun` доступен (Caddy проксирует на port 5678)  
+📋 Переделать webhook инфраструктуру: вместо n8n использовать Node.js бот с Express  
+📋 Установить Telegram webhook на `https://n8n.webvibe-lead.fun/webhook/telegram`
 
 ## День 12 - IMAP входящие
 📋 `scripts/email/imap.js` - imapflow + сопоставление ответов + Telegram уведомление  

@@ -18,31 +18,6 @@ services:
       timeout: 5s
       retries: 5
 
-  n8n:
-    image: n8nio/n8n
-    container_name: leadgen_n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
-      - DB_POSTGRESDB_USER=${POSTGRES_USER}
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-      - GENERIC_TIMEZONE=Europe/Vilnius
-      - TZ=Europe/Vilnius
-      - N8N_HOST=n8n.webvibe-lead.fun
-      - N8N_PROTOCOL=https
-      - WEBHOOK_URL=https://n8n.webvibe-lead.fun/
-      - N8N_EDITOR_BASE_URL=https://n8n.webvibe-lead.fun/
-      - N8N_SECURE_COOKIE=true
-    volumes:
-      - n8n_data:/home/node/.n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   node:
     build: .
     container_name: leadgen_node
@@ -60,4 +35,3 @@ services:
 
 volumes:
   postgres_data:
-  n8n_data:
