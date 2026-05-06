@@ -1,5 +1,5 @@
 {
-  "name": "Filter - Every 30 min",
+  "name": "Audit - Every 30 min",
   "nodes": [
     {
       "parameters": {
@@ -21,26 +21,26 @@
           "parameters": [
             {
               "name": "command",
-              "value": "node scripts/filter/index.js"
+              "value": "node scripts/audit/index.js"
             },
             {
               "name": "args",
               "value": {
-                "batch": 10
+                "batch": 5
               }
             }
           ]
         }
       },
-      "id": "exec-filter",
-      "name": "Execute - Filter",
+      "id": "exec-audit",
+      "name": "Execute - Audit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [450, 300]
     },
     {
       "parameters": {
-        "functionCode": "let result = {};\ntry {\n  const response = $input.first().json;\n  if (response && typeof response === 'object') {\n    result = response;\n  } else {\n    result = { message: 'Filter completed' };\n  }\n} catch (e) {\n  result = { message: 'Filter completed', raw: $input.first().json };\n}\nreturn { json: result };"
+        "functionCode": "let result = {};\ntry {\n  const response = $input.first().json;\n  if (response && typeof response === 'object') {\n    result = response;\n  } else {\n    result = { message: 'Audit completed' };\n  }\n} catch (e) {\n  result = { message: 'Audit completed', raw: $input.first().json };\n}\nreturn { json: result };"
       },
       "id": "parse-json",
       "name": "Parse JSON",
@@ -53,7 +53,7 @@
         "resource": "message",
         "botToken": "8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A",
         "chatId": "5900706320",
-        "text": "🎯 Filter executed (every 30 min)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}",
+        "text": "🔍 Audit executed (every 30 min)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}",
         "parseMode": "Markdown"
       },
       "id": "send-telegram",
@@ -67,13 +67,13 @@
     "Interval - 30 min": [
       [
         {
-          "node": "Execute - Filter",
+          "node": "Execute - Audit",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Execute - Filter": [
+    "Execute - Audit": [
       [
         {
           "node": "Parse JSON",

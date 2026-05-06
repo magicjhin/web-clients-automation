@@ -1,14 +1,15 @@
 {
-  "name": "Filter - Every 30 min",
+  "name": "Followup Email - Cron 10:00",
   "nodes": [
     {
       "parameters": {
-        "mode": "interval",
-        "interval": 30
+        "mode": "cron",
+        "cronExpression": "0 10 * * *",
+        "timezone": "Europe/Vilnius"
       },
-      "id": "interval-30",
-      "name": "Interval - 30 min",
-      "type": "n8n-nodes-base.interval",
+      "id": "cron-10",
+      "name": "Cron - 10:00",
+      "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
       "position": [250, 300]
     },
@@ -21,26 +22,20 @@
           "parameters": [
             {
               "name": "command",
-              "value": "node scripts/filter/index.js"
-            },
-            {
-              "name": "args",
-              "value": {
-                "batch": 10
-              }
+              "value": "node scripts/email/followup.js"
             }
           ]
         }
       },
-      "id": "exec-filter",
-      "name": "Execute - Filter",
+      "id": "exec-followup",
+      "name": "Execute - Followup",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [450, 300]
     },
     {
       "parameters": {
-        "functionCode": "let result = {};\ntry {\n  const response = $input.first().json;\n  if (response && typeof response === 'object') {\n    result = response;\n  } else {\n    result = { message: 'Filter completed' };\n  }\n} catch (e) {\n  result = { message: 'Filter completed', raw: $input.first().json };\n}\nreturn { json: result };"
+        "functionCode": "let result = {};\ntry {\n  const response = $input.first().json;\n  if (response && typeof response === 'object') {\n    result = response;\n  } else {\n    result = { message: 'Followup completed' };\n  }\n} catch (e) {\n  result = { message: 'Followup completed', raw: $input.first().json };\n}\nreturn { json: result };"
       },
       "id": "parse-json",
       "name": "Parse JSON",
@@ -53,7 +48,7 @@
         "resource": "message",
         "botToken": "8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A",
         "chatId": "5900706320",
-        "text": "🎯 Filter executed (every 30 min)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}",
+        "text": "📧 Followup emails sent (10:00)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}",
         "parseMode": "Markdown"
       },
       "id": "send-telegram",
@@ -64,16 +59,16 @@
     }
   ],
   "connections": {
-    "Interval - 30 min": [
+    "Cron - 10:00": [
       [
         {
-          "node": "Execute - Filter",
+          "node": "Execute - Followup",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Execute - Filter": [
+    "Execute - Followup": [
       [
         {
           "node": "Parse JSON",

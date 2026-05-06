@@ -1,24 +1,42 @@
 {
-  "name": "Parser - Manual Trigger",
+  "name": "Parser - Cron 09:00",
   "nodes": [
     {
-      "parameters": {"triggerTip": ""},
-      "id": "manual-trigger",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
+      "parameters": {
+        "mode": "cron",
+        "cronExpression": "0 9 * * *",
+        "timezone": "Europe/Vilnius"
+      },
+      "id": "cron-9",
+      "name": "Cron - 09:00",
+      "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
       "position": [250, 300]
     },
     {
-      "parameters": {"command": "cd /opt/leadgen && node scripts/parser/index.js --list"},
+      "parameters": {
+        "method": "POST",
+        "url": "http://178.104.253.76:3333/execute",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "command",
+              "value": "node scripts/parser/index.js"
+            }
+          ]
+        }
+      },
       "id": "exec-parser",
-      "name": "Execute - Parser List",
-      "type": "n8n-nodes-execute-command-plus",
-      "typeVersion": 1,
+      "name": "Execute - Parser",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
       "position": [450, 300]
     },
     {
-      "parameters": {"functionCode": "let result = {};\ntry {\n  const stdout = $input.first().json.stdout;\n  if (stdout) {\n    result = JSON.parse(stdout);\n  } else {\n    result = { message: 'No output' };\n  }\n} catch (e) {\n  result = { message: $input.first().json.stdout || 'Error' };\n}\nreturn { json: result };"},
+      "parameters": {
+        "functionCode": "let result = {};\ntry {\n  const response = $input.first().json;\n  if (response && typeof response === 'object') {\n    result = response;\n  } else {\n    result = { message: 'Parser completed' };\n  }\n} catch (e) {\n  result = { message: 'Parser completed', raw: $input.first().json };\n}\nreturn { json: result };"
+      },
       "id": "parse-json",
       "name": "Parse JSON",
       "type": "n8n-nodes-base.function",
@@ -26,7 +44,13 @@
       "position": [650, 300]
     },
     {
-      "parameters": {"authentication": "predefinedCredentialType", "credentialType": "telegramBotApi", "resource": "message", "chatId": "5900706320", "text": "{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}", "parseMode": "Markdown"},
+      "parameters": {
+        "resource": "message",
+        "botToken": "8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A",
+        "chatId": "5900706320",
+        "text": "📊 Parser executed (09:00)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}",
+        "parseMode": "Markdown"
+      },
       "id": "send-telegram",
       "name": "Send Telegram",
       "type": "n8n-nodes-base.telegram",
@@ -35,11 +59,35 @@
     }
   ],
   "connections": {
-    "Manual Trigger": [[{"node": "Execute - Parser List", "type": "main", "index": 0}]],
-    "Execute - Parser List": [[{"node": "Parse JSON", "type": "main", "index": 0}]],
-    "Parse JSON": [[{"node": "Send Telegram", "type": "main", "index": 0}]]
+    "Cron - 09:00": [
+      [
+        {
+          "node": "Execute - Parser",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Execute - Parser": [
+      [
+        {
+          "node": "Parse JSON",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "Parse JSON": [
+      [
+        {
+          "node": "Send Telegram",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
   },
-  "active": false,
-  "settings": {"executionOrder": "v1"}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }
-

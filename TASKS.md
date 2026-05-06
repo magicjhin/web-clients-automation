@@ -68,12 +68,12 @@
 📋 Тест: все команды возвращают ожидаемый ответ
 
 ## День 11 — n8n воркфлоу
-📋 Воркфлоу 1: Парсинг (Telegram → Execute Command)
-📋 Воркфлоу 2: Фильтрация (Schedule → Execute Command)
-📋 Воркфлоу 3: Аудит и письма (Cron 09:00 → Execute Command)
-📋 Воркфлоу 4: Повторные письма (Cron daily → Execute Command)
-📋 Воркфлоу 5: Telegram бот (Webhook → роутинг)
-📋 Воркфлоу 6: IMAP (Cron 30 мин → Execute Command)
+🔄 Воркфлоу 1: Telegram бот — импортирован в n8n UI, все 9 узлов видны (Webhook, Extract Message, Switch, 3x Execute, 2x Format, Telegram Send)
+📋 Воркфлоу 2: Парсинг (Schedule 09:00 → Execute Command)
+📋 Воркфлоу 3: Фильтрация (Schedule 30 мин → Execute Command)
+📋 Воркфлоу 4: Аудит (Schedule 30 мин → Execute Command)
+📋 Воркфлоу 5: Повторные письма (Cron 10:00 → Execute Command)
+📋 Воркфлоу 6: IMAP (Schedule 5 мин → Execute Command)
 📋 scripts/email/followup.js
 
 ## День 12 — IMAP входящие

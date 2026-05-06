@@ -9,7 +9,23 @@
       "Bash(ssh -i \"C:\\\\Users\\\\aleks\\\\.ssh\\\\id_rsa\" -o StrictHostKeyChecking=no root@178.104.253.76 \"cd /opt/leadgen && git pull && docker-compose down && docker-compose up -d\")",
       "WebFetch(domain:github.com)",
       "Bash(ssh -o StrictHostKeyChecking=no root@178.104.253.76 \"cat ~/.ssh/id_ed25519\")",
-      "Bash(ssh root@178.104.253.76 \"cd /opt/leadgen && psql -U leadgen -d leadgen_app -f db/niches_seed.sql\")"
+      "Bash(ssh root@178.104.253.76 \"cd /opt/leadgen && psql -U leadgen -d leadgen_app -f db/niches_seed.sql\")",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(git rm *)",
+      "Bash(node scripts/deploy-workflows.js)",
+      "WebFetch(domain:docs.n8n.io)",
+      "Bash(Get-Content -Path \"C:\\\\Users\\\\aleks\\\\Desktop\\\\Leadgen\\\\n8n\\\\01-telegram-bot.json\" -Raw)",
+      "Bash(ConvertFrom-Json)",
+      "Bash(ConvertTo-Json -Depth 10)",
+      "Bash(Select-String -Pattern \"typeVersion\" -Context 2)",
+      "PowerShell(cd C:\\\\Users\\\\aleks\\\\Desktop\\\\Leadgen; $env:N8N_TOKEN = \\(Get-Content .env | Select-String \"N8N_TOKEN\" | ForEach-Object { $_ -split \"=\" | Select-Object -Last 1 }\\); node scripts/import-workflows.js)",
+      "PowerShell(cd C:\\\\Users\\\\aleks\\\\Desktop\\\\Leadgen; $env:N8N_TOKEN = \\(Get-Content .env | Select-String \"N8N_TOKEN\" | ForEach-Object { $_ -split \"=\" | Select-Object -Last 1 }\\); $content = Get-Content -Raw n8n/04-audit.json | ConvertFrom-Json; $uri = \"http://178.104.253.76:5678/api/v1/workflows\"; $headers = @{ \"X-N8N-API-KEY\" = $env:N8N_TOKEN; \"Content-Type\" = \"application/json\" }; $response = Invoke-WebRequest -Uri $uri -Method POST -Headers $headers -Body \\($content | ConvertTo-Json -Depth 10\\); Write-Host \"✅ Imported: $\\($response.Content | ConvertFrom-Json | Select-Object -ExpandProperty id\\)\")",
+      "PowerShell(cd C:\\\\Users\\\\aleks\\\\Desktop\\\\Leadgen; $content = Get-Content -Raw n8n/04-audit.json; try { $json = $content | ConvertFrom-Json; Write-Host \"✅ JSON valid\" } catch { Write-Host \"❌ JSON invalid: $_\" })",
+      "PowerShell($PROFILE)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\aleks\\Documents\\WindowsPowerShell"
     ]
   }
 }
