@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "Parser - Manual Trigger",
   "nodes": [
     {
@@ -13,7 +13,7 @@
       "parameters": {"command": "cd /opt/leadgen && node scripts/parser/index.js --list"},
       "id": "exec-parser",
       "name": "Execute - Parser List",
-      "type": "n8n-nodes-base.executeCommand",
+      "type": "n8n-nodes-execute-command-plus",
       "typeVersion": 1,
       "position": [450, 300]
     },
@@ -42,3 +42,4 @@
   "active": false,
   "settings": {"executionOrder": "v1"}
 }
+

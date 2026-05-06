@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "Audit & Email - Cron 09:00",
   "nodes": [
     {
@@ -17,7 +17,7 @@
       "parameters": {"command": "cd /opt/leadgen && node scripts/audit/index.js --batch=15"},
       "id": "exec-audit",
       "name": "Execute - Audit",
-      "type": "n8n-nodes-base.executeCommand",
+      "type": "n8n-nodes-execute-command-plus",
       "typeVersion": 1,
       "position": [450, 300]
     },
@@ -30,7 +30,7 @@
       "position": [650, 300]
     },
     {
-      "parameters": {"authentication": "predefinedCredentialType", "credentialType": "telegramBotApi", "resource": "message", "chatId": "5900706320", "text": "📧 Audit completed (09:00)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}", "parseMode": "Markdown"},
+      "parameters": {"authentication": "predefinedCredentialType", "credentialType": "telegramBotApi", "resource": "message", "chatId": "5900706320", "text": "рџ“§ Audit completed (09:00)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}", "parseMode": "Markdown"},
       "id": "send-telegram",
       "name": "Send Telegram",
       "type": "n8n-nodes-base.telegram",
@@ -46,3 +46,4 @@
   "active": false,
   "settings": {"executionOrder": "v1"}
 }
+

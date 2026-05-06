@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "IMAP Listener - Cron Every 30 Min",
   "nodes": [
     {
@@ -17,7 +17,7 @@
       "parameters": {"command": "cd /opt/leadgen && node scripts/email/imap.js"},
       "id": "exec-imap",
       "name": "Execute - IMAP",
-      "type": "n8n-nodes-base.executeCommand",
+      "type": "n8n-nodes-execute-command-plus",
       "typeVersion": 1,
       "position": [450, 300]
     },
@@ -38,7 +38,7 @@
       "position": [850, 300]
     },
     {
-      "parameters": {"authentication": "predefinedCredentialType", "credentialType": "telegramBotApi", "resource": "message", "chatId": "5900706320", "text": "⚠️ IMAP Error\\n{{ JSON.stringify($node['Parse JSON'].json.error) }}", "parseMode": "Markdown"},
+      "parameters": {"authentication": "predefinedCredentialType", "credentialType": "telegramBotApi", "resource": "message", "chatId": "5900706320", "text": "вљ пёЏ IMAP Error\\n{{ JSON.stringify($node['Parse JSON'].json.error) }}", "parseMode": "Markdown"},
       "id": "send-error",
       "name": "Send Error Alert",
       "type": "n8n-nodes-base.telegram",
@@ -55,3 +55,4 @@
   "active": false,
   "settings": {"executionOrder": "v1"}
 }
+
