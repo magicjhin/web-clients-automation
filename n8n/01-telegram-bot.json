@@ -35,64 +35,11 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "conditions": [
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/status"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/niches"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/parse"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/filter"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/run"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/pause"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/resume"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/history"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/logs"
-            },
-            {
-              "key": "json.text",
-              "condition": "starts",
-              "value": "/calls"
-            }
-          ]
-        }
+        "functionCode": "const text = $input.first().json.text || '';\nconst cmd = text.split(' ')[0].toLowerCase();\n\nlet command = '';\nswitch(cmd) {\n  case '/status': command = 'node scripts/telegram/bot.js --cmd=status'; break;\n  case '/niches': command = 'node scripts/telegram/bot.js --cmd=niches'; break;\n  case '/parse': command = 'node scripts/parser/index.js'; break;\n  case '/filter': command = 'node scripts/filter/index.js'; break;\n  case '/run': command = 'node scripts/audit/index.js --batch=15'; break;\n  case '/pause': command = 'node scripts/telegram/bot.js --cmd=pause'; break;\n  case '/resume': command = 'node scripts/telegram/bot.js --cmd=resume'; break;\n  case '/history': command = 'node scripts/telegram/bot.js --cmd=history'; break;\n  case '/logs': command = 'node scripts/telegram/bot.js --cmd=logs'; break;\n  case '/calls': command = 'node scripts/telegram/bot.js --cmd=calls'; break;\n  default: return {json: {text: '❓ Unknown command: ' + cmd, chatId: $node['Extract Message'].json.chatId, command: ''}};\n}\n\nreturn {json: {text: $input.first().json.text, chatId: $input.first().json.chatId, messageId: $input.first().json.messageId, command: command}};"
       },
-      "id": "switch-cmd",
-      "name": "Switch - Command",
-      "type": "n8n-nodes-base.switch",
+      "id": "route-cmd",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [850, 300]
     },
@@ -102,149 +49,23 @@
         "url": "http://178.104.253.76:3333/execute",
         "sendBody": true,
         "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=status\"}"
+        "body": "{\"command\":\"{{ $node['Route Command'].json.command }}\"}"
       },
-      "id": "exec-status",
-      "name": "Execute - /status",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 100]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=niches\"}"
-      },
-      "id": "exec-niches",
-      "name": "Execute - /niches",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 200]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/parser/index.js\"}"
-      },
-      "id": "exec-parse",
-      "name": "Execute - /parse",
+      "id": "exec-command",
+      "name": "Execute Command",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [1050, 300]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/filter/index.js\"}"
-      },
-      "id": "exec-filter",
-      "name": "Execute - /filter",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 400]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/audit/index.js --batch=15\"}"
-      },
-      "id": "exec-run",
-      "name": "Execute - /run",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 500]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=pause\"}"
-      },
-      "id": "exec-pause",
-      "name": "Execute - /pause",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 600]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=resume\"}"
-      },
-      "id": "exec-resume",
-      "name": "Execute - /resume",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 700]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=history\"}"
-      },
-      "id": "exec-history",
-      "name": "Execute - /history",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 800]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=logs\"}"
-      },
-      "id": "exec-logs",
-      "name": "Execute - /logs",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 900]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://178.104.253.76:3333/execute",
-        "sendBody": true,
-        "contentType": "application/json",
-        "body": "{\"command\":\"node scripts/telegram/bot.js --cmd=calls\"}"
-      },
-      "id": "exec-calls",
-      "name": "Execute - /calls",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1050, 1000]
-    },
-    {
-      "parameters": {
-        "functionCode": "let text = '';\nconst input = $input.first().json;\nif (input.message) {\n  text = input.message;\n} else if (input.error) {\n  text = '❌ Error: ' + input.error;\n} else if (input.raw) {\n  text = input.raw;\n} else if (typeof input === 'string') {\n  text = input;\n} else {\n  text = JSON.stringify(input, null, 2);\n}\nreturn {json: {text: text || 'Command executed', chatId: $node['Extract Message'].json.chatId, messageId: $node['Extract Message'].json.messageId}};"
+        "functionCode": "let text = '';\nconst input = $input.first().json;\nif (input.message) {\n  text = input.message;\n} else if (input.error) {\n  text = '❌ Error: ' + input.error;\n} else if (input.raw) {\n  text = input.raw;\n} else if (typeof input === 'string') {\n  text = input;\n} else {\n  text = JSON.stringify(input, null, 2);\n}\nreturn {json: {text: text || 'Command executed', chatId: $node['Extract Message'].json.chatId}};"
       },
       "id": "format-response",
       "name": "Format Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [1250, 500]
+      "position": [1250, 300]
     },
     {
       "parameters": {
@@ -258,7 +79,7 @@
       "name": "Send Telegram",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [1450, 500]
+      "position": [1450, 300]
     }
   ],
   "connections": {
@@ -283,148 +104,22 @@
     "Extract Message": [
       [
         {
-          "node": "Switch - Command",
+          "node": "Route Command",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Switch - Command": [
+    "Route Command": [
       [
         {
-          "node": "Execute - /status",
-          "type": "main",
-          "index": 0
-        },
-        {
-          "node": "Execute - /niches",
-          "type": "main",
-          "index": 1
-        },
-        {
-          "node": "Execute - /parse",
-          "type": "main",
-          "index": 2
-        },
-        {
-          "node": "Execute - /filter",
-          "type": "main",
-          "index": 3
-        },
-        {
-          "node": "Execute - /run",
-          "type": "main",
-          "index": 4
-        },
-        {
-          "node": "Execute - /pause",
-          "type": "main",
-          "index": 5
-        },
-        {
-          "node": "Execute - /resume",
-          "type": "main",
-          "index": 6
-        },
-        {
-          "node": "Execute - /history",
-          "type": "main",
-          "index": 7
-        },
-        {
-          "node": "Execute - /logs",
-          "type": "main",
-          "index": 8
-        },
-        {
-          "node": "Execute - /calls",
-          "type": "main",
-          "index": 9
-        }
-      ]
-    ],
-    "Execute - /status": [
-      [
-        {
-          "node": "Format Response",
+          "node": "Execute Command",
           "type": "main",
           "index": 0
         }
       ]
     ],
-    "Execute - /niches": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /parse": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /filter": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /run": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /pause": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /resume": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /history": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /logs": [
-      [
-        {
-          "node": "Format Response",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - /calls": [
+    "Execute Command": [
       [
         {
           "node": "Format Response",
