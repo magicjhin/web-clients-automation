@@ -275,6 +275,67 @@ async function cmdCalls(chatId) {
   }
 }
 
+async function cmdDiscover(chatId, arg) {
+  const { getDiscoverState } = require('../parser/discover-niches');
+  if (getDiscoverState().active) {
+    await sendMessage(chatId, '⚠️ Поиск ниш уже запущен. Используй /discover\\_status для статуса.');
+    return;
+  }
+
+  const min = arg ? parseInt(arg) : 500;
+  if (isNaN(min)) {
+    await sendMessage(chatId, '📋 Использование: `/discover` или `/discover 1000` (минимум компаний)');
+    return;
+  }
+
+  await sendMessage(chatId,
+    `🔍 *Запускаю поиск ниш...*\n\n` +
+    `Минимум компаний: *${min}*\n` +
+    `Проверяю ~291 категорию на rekvizitai.vz.lt\n\n` +
+    `Это займёт ~10-15 минут. Пришлю результат когда закончу.\n` +
+    `Статус: /discover\\_status`
+  );
+
+  const { discoverNiches } = require('../parser/discover-niches');
+  discoverNiches(min).then(async (result) => {
+    await sendMessage(chatId,
+      `✅ *Поиск ниш завершён!*\n\n` +
+      `🔍 Проверено категорий: *${result.total}*\n` +
+      `✅ Подходящих (> ${min} фирм): *${result.found}*\n` +
+      `➕ Добавлено новых ниш: *${result.added}*\n\n` +
+      `Посмотреть: /niches`
+    );
+  }).catch(async (err) => {
+    await sendMessage(chatId, `❌ Ошибка поиска ниш: ${err.message.slice(0, 300)}`);
+  });
+}
+
+async function cmdDiscoverStatus(chatId) {
+  const { getDiscoverState } = require('../parser/discover-niches');
+  const state = getDiscoverState();
+
+  if (!state.active) {
+    await sendMessage(chatId, '💤 Поиск ниш не запущен.\n\nЗапустить: /discover');
+    return;
+  }
+
+  const elapsed = Math.round((Date.now() - new Date(state.startedAt).getTime()) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const pct = state.total > 0 ? Math.round((state.checked / state.total) * 100) : 0;
+  const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
+
+  await sendMessage(chatId,
+    `🔍 *Поиск ниш активен*\n\n` +
+    `📌 Текущая: *${state.currentCategory}*\n` +
+    `📊 Прогресс: ${bar} ${pct}%\n` +
+    `🔢 Проверено: *${state.checked}* из *${state.total}*\n` +
+    `✅ Найдено подходящих: *${state.found}*\n` +
+    `➕ Добавлено в БД: *${state.added}*\n` +
+    `⏱ Время: ${mins}м ${secs}с`
+  );
+}
+
 async function cmdParseStatus(chatId) {
   const parser = require('../parser/index');
   const state = parser.getParseState();
@@ -401,6 +462,8 @@ async function cmdHelp(chatId) {
 
 📁 *Ниши и парсинг*
 /niches — список всех ниш
+/discover — найти все ниши с 500+ фирм
+/discover\\_status — прогресс поиска ниш
 /parse 1 — парсить нишу по ID
 /parse Стоматологи — парсить по названию
 
@@ -450,6 +513,10 @@ async function handleUpdate(update) {
       return cmdParseStatus(chatId);
     case '/reset_niche':
       return cmdResetNiche(chatId, arg);
+    case '/discover':
+      return cmdDiscover(chatId, arg);
+    case '/discover_status':
+      return cmdDiscoverStatus(chatId);
     case '/filter':
       return cmdFilter(chatId, arg);
     case '/run':
