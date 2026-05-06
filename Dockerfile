@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies using npm ci for more reliable installation
-RUN npm ci --prefer-offline --no-audit
+RUN npm install --no-audit
 
 # Copy the rest of the application
 COPY . .
