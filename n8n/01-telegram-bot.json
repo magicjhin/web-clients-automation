@@ -41,6 +41,51 @@
               "key": "json.text",
               "condition": "starts",
               "value": "/status"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/niches"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/parse"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/filter"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/run"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/pause"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/resume"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/history"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/logs"
+            },
+            {
+              "key": "json.text",
+              "condition": "starts",
+              "value": "/calls"
             }
           ]
         }
