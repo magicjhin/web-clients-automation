@@ -2,7 +2,11 @@
   "name": "Audit & Email - Cron 09:00",
   "nodes": [
     {
-      "parameters": {"mode": "every", "interval": [0], "cronExpression": "0 9 * * *", "timezone": "Europe/Vilnius"},
+      "parameters": {
+        "mode": "cron",
+        "cronExpression": "0 9 * * *",
+        "timezone": "Europe/Vilnius"
+      },
       "id": "cron-09",
       "name": "Cron - 09:00",
       "type": "n8n-nodes-base.cron",

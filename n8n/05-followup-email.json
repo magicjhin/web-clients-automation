@@ -2,7 +2,11 @@
   "name": "Follow-up Email - Cron 10:00",
   "nodes": [
     {
-      "parameters": {"mode": "every", "interval": [0], "cronExpression": "0 10 * * *", "timezone": "Europe/Vilnius"},
+      "parameters": {
+        "mode": "cron",
+        "cronExpression": "0 10 * * *",
+        "timezone": "Europe/Vilnius"
+      },
       "id": "cron-10",
       "name": "Cron - 10:00",
       "type": "n8n-nodes-base.cron",

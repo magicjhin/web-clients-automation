@@ -2,7 +2,11 @@
   "name": "IMAP Listener - Cron Every 30 Min",
   "nodes": [
     {
-      "parameters": {"mode": "every", "interval": [30], "timezone": "Europe/Vilnius"},
+      "parameters": {
+        "mode": "every",
+        "interval": 30,
+        "triggerTip": ""
+      },
       "id": "cron-30",
       "name": "Cron - Every 30 Min",
       "type": "n8n-nodes-base.cron",
