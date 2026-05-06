@@ -20,6 +20,6 @@ jobs:
             set -e
             cd /opt/leadgen
             git pull origin main
-            docker compose up -d --remove-orphans
-            docker compose restart node
-            docker ps
+            docker-compose up -d --remove-orphans
+            docker-compose restart node
+            docker-compose ps
