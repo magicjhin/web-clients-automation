@@ -10,12 +10,12 @@
 
 - **VPS**: 178.104.253.76 (Hetzner CX23, Ubuntu)
 - **Репо**: https://github.com/magicjhin/web-clients-automation.git
-- **n8n**: http://178.104.253.76:5678
+- **Bot**: `https://n8n.webvibe-lead.fun` (Node.js Express, будет реализован)
 - **Deploy**: push в main → GitHub Actions → git pull на VPS автоматически
 
 ## Стек
 - Node.js 20, PostgreSQL 15, Docker Compose
-- n8n (оркестрация), Puppeteer (браузер), Claude Sonnet API
+- Express (webhook сервер), Node-cron (оркестрация), Puppeteer (браузер), Claude Sonnet API
 - Nodemailer (SMTP), imapflow (IMAP), node-telegram-bot-api
 
 ## Структура папок
@@ -31,10 +31,10 @@
 └── scripts/
     ├── shared/     db.js, logger.js, config.js
     ├── parser/     index.js, scraper.js, normalizer.js
-    ├── filter/     index.js, pagespeed.js, screenshot.js, design.js, activity.js, vip.js
-    ├── audit/      index.js, crawler.js, claude.js, letterTemplates.js
-    ├── email/      sender.js, followup.js, imap.js
-    └── telegram/   bot.js
+    ├── filter/     index.js, pagespeed.js, screenshot.js, design.js, activity.js, vip.js (⏳ не реализованы)
+    ├── audit/      index.js, crawler.js, claude.js, letterTemplates.js (⏳ не реализованы)
+    ├── email/      sender.js, followup.js, imap.js (⏳ не реализованы)
+    └── bot/        index.js, telegram.js, cron.js (⏳ не реализованы)
 ```
 
 ## Правила кодирования
@@ -54,5 +54,4 @@
 ## Документация
 - `docs/ARCHITECTURE.md` — воронка, VIP система, типы писем, обработка ошибок
 - `docs/DATABASE.md` — полная схема БД, все колонки, статусы
-- `docs/WORKFLOWS.md` — n8n воркфлоу, Telegram команды, IMAP логика
 - `docs/DEPLOY.md` — VPS setup, Docker, GitHub Actions

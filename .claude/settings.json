@@ -9,7 +9,11 @@
       "Bash(dir \"c:\\\\Users\\\\aleks\\\\Desktop\\\\Leadgen\\\\n8n\\\\*.json\")",
       "Read(//c/Users/aleks/Desktop/Leadgen/n8n/**)",
       "Bash(ssh root@178.104.253.76 \"uname -a && docker compose -f /opt/leadgen/docker-compose.yml ps 2>/dev/null || echo 'docker compose not running'\")",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\aleks\\\\Desktop\\\\Leadgen\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "Bash(ConvertTo-Json)"
     ]
   }
 }

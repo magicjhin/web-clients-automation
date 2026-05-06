@@ -29,9 +29,8 @@
 ## День 4 - Парсер rekvizitai.lt
 ✅ `scripts/parser/scraper.js` - Puppeteer и пагинация  
 ✅ `scripts/parser/normalizer.js` - очистка email, phone, URL  
-✅ `scripts/parser/index.js` - CLI `/parse`, `/parse 1`, `/parse auto`  
-✅ `db/niches_seed.sql` - seed ниш  
-✅ `scripts/telegram/bot.js` - polling-бот для ранних команд  
+✅ `scripts/parser/index.js` - CLI `--list`, `--niche=X`, `--auto`  
+✅ `db/niches_seed.sql` - seed 10 ниш  
 ✅ `scripts/init-db.js` - инициализация БД с нишами
 
 ## День 5 - Фильтр часть 1
