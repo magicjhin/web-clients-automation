@@ -4,9 +4,7 @@
 // Запуск: node scripts/http-executor.js
 
 const express = require('express');
-const { execSync, spawn } = require('child_process');
-const logger = require('./shared/logger');
-const config = require('./shared/config');
+const { execSync } = require('child_process');
 
 const app = express();
 const PORT = process.env.HTTP_EXECUTOR_PORT || 3333;
@@ -15,6 +13,7 @@ app.use(express.json());
 
 // Healthcheck
 app.get('/health', (req, res) => {
+  console.log('[HEALTH] Check');
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -27,7 +26,7 @@ app.post('/execute', async (req, res) => {
       return res.status(400).json({ error: 'command is required' });
     }
 
-    logger.info(`HTTP execute: ${command}`, { args });
+    console.log(`[EXECUTE] ${command}`, args);
 
     // Build command with args
     let fullCommand = `cd /opt/leadgen && ${command}`;
@@ -64,15 +63,14 @@ app.post('/execute', async (req, res) => {
       result.error = stderr;
     }
 
-    logger.info(`HTTP execute completed: ${command}`, { result });
+    console.log(`[EXECUTED] ${command}`);
     res.json(result);
   } catch (err) {
-    logger.error('HTTP execute error', { error: err.message });
+    console.error('[ERROR]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 app.listen(PORT, () => {
-  logger.info(`HTTP Executor listening on port ${PORT}`);
   console.log(`HTTP Executor listening on port ${PORT}`);
 });
