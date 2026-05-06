@@ -1,100 +1,44 @@
 {
-  "name": "Audit & Email - Cron Daily 09:00",
+  "name": "Audit & Email - Cron 09:00",
   "nodes": [
     {
-      "parameters": {
-        "mode": "every",
-        "interval": [
-          0
-        ],
-        "cronExpression": "0 9 * * *",
-        "timezone": "Europe/Vilnius"
-      },
-      "id": "1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b",
+      "parameters": {"mode": "every", "interval": [0], "cronExpression": "0 9 * * *", "timezone": "Europe/Vilnius"},
+      "id": "cron-09",
       "name": "Cron - 09:00",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 300]
     },
     {
-      "parameters": {
-        "command": "cd /opt/leadgen && node scripts/audit/index.js --batch=15"
-      },
-      "id": "2f3a4b5c-6d7e-8f9a-0b1c-2d3e4f5a6b7c",
+      "parameters": {"command": "cd /opt/leadgen && node scripts/audit/index.js --batch=15"},
+      "id": "exec-audit",
       "name": "Execute - Audit",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [
-        450,
-        300
-      ]
+      "position": [450, 300]
     },
     {
-      "parameters": {
-        "functionCode": "let result = {};\ntry {\n  const stdout = $input.first().json.stdout;\n  if (stdout) {\n    result = JSON.parse(stdout);\n  } else {\n    result = { message: 'Аудит завершён' };\n  }\n} catch (e) {\n  result = { message: $input.first().json.stdout || 'Error' };\n}\nreturn { json: result };"
-      },
-      "id": "3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d",
+      "parameters": {"functionCode": "let result = {};\ntry {\n  const stdout = $input.first().json.stdout;\n  if (stdout) {\n    result = JSON.parse(stdout);\n  } else {\n    result = { message: 'Audit completed' };\n  }\n} catch (e) {\n  result = { message: $input.first().json.stdout || 'Error' };\n}\nreturn { json: result };"},
+      "id": "parse-json",
       "name": "Parse JSON",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [
-        650,
-        300
-      ]
+      "position": [650, 300]
     },
     {
-      "parameters": {
-        "authentication": "predefinedCredentialType",
-        "credentialType": "telegramBotApi",
-        "resource": "message",
-        "chatId": "5900706320",
-        "text": "📧 *Аудит завершён (09:00)*\\n\\n{{ JSON.stringify($node[\"Parse JSON\"].json, null, 2) }}",
-        "parseMode": "Markdown"
-      },
-      "id": "4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e",
+      "parameters": {"authentication": "predefinedCredentialType", "credentialType": "telegramBotApi", "resource": "message", "chatId": "5900706320", "text": "📧 Audit completed (09:00)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}", "parseMode": "Markdown"},
+      "id": "send-telegram",
       "name": "Send Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [
-        850,
-        300
-      ]
+      "position": [850, 300]
     }
   ],
   "connections": {
-    "Cron - 09:00": [
-      [
-        {
-          "node": "Execute - Audit",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - Audit": [
-      [
-        {
-          "node": "Parse JSON",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Parse JSON": [
-      [
-        {
-          "node": "Send Telegram",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ]
-  ],
+    "Cron - 09:00": [[{"node": "Execute - Audit", "type": "main", "index": 0}]],
+    "Execute - Audit": [[{"node": "Parse JSON", "type": "main", "index": 0}]],
+    "Parse JSON": [[{"node": "Send Telegram", "type": "main", "index": 0}]]
+  },
   "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  }
+  "settings": {"executionOrder": "v1"}
 }

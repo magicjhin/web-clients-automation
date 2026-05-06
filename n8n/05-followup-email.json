@@ -1,100 +1,44 @@
 {
-  "name": "Follow-up Email - Cron Daily 10:00",
+  "name": "Follow-up Email - Cron 10:00",
   "nodes": [
     {
-      "parameters": {
-        "mode": "every",
-        "interval": [
-          0
-        ],
-        "cronExpression": "0 10 * * *",
-        "timezone": "Europe/Vilnius"
-      },
-      "id": "5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f",
+      "parameters": {"mode": "every", "interval": [0], "cronExpression": "0 10 * * *", "timezone": "Europe/Vilnius"},
+      "id": "cron-10",
       "name": "Cron - 10:00",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 300]
     },
     {
-      "parameters": {
-        "command": "cd /opt/leadgen && node scripts/email/followup.js"
-      },
-      "id": "6d7e8f9a-0b1c-2d3e-4f5a-6b7c8d9e0f1a",
+      "parameters": {"command": "cd /opt/leadgen && node scripts/email/followup.js"},
+      "id": "exec-followup",
       "name": "Execute - Followup",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [
-        450,
-        300
-      ]
+      "position": [450, 300]
     },
     {
-      "parameters": {
-        "functionCode": "let result = {};\ntry {\n  const stdout = $input.first().json.stdout;\n  if (stdout) {\n    result = JSON.parse(stdout);\n  } else {\n    result = { message: 'Повторные письма отправлены' };\n  }\n} catch (e) {\n  result = { message: $input.first().json.stdout || 'Error' };\n}\nreturn { json: result };"
-      },
-      "id": "7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b",
+      "parameters": {"functionCode": "let result = {};\ntry {\n  const stdout = $input.first().json.stdout;\n  if (stdout) {\n    result = JSON.parse(stdout);\n  } else {\n    result = { message: 'Followup completed' };\n  }\n} catch (e) {\n  result = { message: $input.first().json.stdout || 'Error' };\n}\nreturn { json: result };"},
+      "id": "parse-json",
       "name": "Parse JSON",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [
-        650,
-        300
-      ]
+      "position": [650, 300]
     },
     {
-      "parameters": {
-        "authentication": "predefinedCredentialType",
-        "credentialType": "telegramBotApi",
-        "resource": "message",
-        "chatId": "5900706320",
-        "text": "📧 *Повторные письма отправлены (10:00)*\\n\\n{{ JSON.stringify($node[\"Parse JSON\"].json, null, 2) }}",
-        "parseMode": "Markdown"
-      },
-      "id": "8f9a0b1c-2d3e-4f5a-6b7c-8d9e0f1a2b3c",
+      "parameters": {"authentication": "predefinedCredentialType", "credentialType": "telegramBotApi", "resource": "message", "chatId": "5900706320", "text": "📧 Followup emails sent (10:00)\\n{{ JSON.stringify($node['Parse JSON'].json, null, 2) }}", "parseMode": "Markdown"},
+      "id": "send-telegram",
       "name": "Send Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [
-        850,
-        300
-      ]
+      "position": [850, 300]
     }
   ],
   "connections": {
-    "Cron - 10:00": [
-      [
-        {
-          "node": "Execute - Followup",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Execute - Followup": [
-      [
-        {
-          "node": "Parse JSON",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ],
-    "Parse JSON": [
-      [
-        {
-          "node": "Send Telegram",
-          "type": "main",
-          "index": 0
-        }
-      ]
-    ]
+    "Cron - 10:00": [[{"node": "Execute - Followup", "type": "main", "index": 0}]],
+    "Execute - Followup": [[{"node": "Parse JSON", "type": "main", "index": 0}]],
+    "Parse JSON": [[{"node": "Send Telegram", "type": "main", "index": 0}]]
   },
   "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  }
+  "settings": {"executionOrder": "v1"}
 }
