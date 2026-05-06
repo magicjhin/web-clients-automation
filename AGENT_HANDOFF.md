@@ -1,67 +1,119 @@
 # Agent Handoff
 
 ## Текущий статус
-День 11 из 14. Все 6 n8n воркфлоу готовы к импорту.
+День 11 из 14. Telegram n8n workflow перепроектирован с polling на webhook, чтобы убрать бесконечную отправку сообщений. Локальные файлы подготовлены, но HTTPS-домен и импорт на VPS еще не завершены.
 
-## Сделано в этой сессии
-- ✅ Переписаны все 6 воркфлоу n8n с правильной логикой
-- ✅ Главный бот (01-telegram-bot.json) поддерживает все 10 команд
-- ✅ Остальные 5 воркфлоу используют правильный JSON body format
-- ✅ HTTP executor поддерживается на VPS (port 3333)
-- ✅ Создана docs/N8N_IMPORT.md (инструкция импорта)
-- ✅ Создана WORKFLOWS_SUMMARY.md (краткое резюме)
-- ✅ Обновлена TASKS.md (День 11 отмечен как готов)
+## Что сделано в этой сессии
+- Разобрана причина бесконечных Telegram-сообщений: старый workflow использовал `Interval` + `getUpdates`, что приводило к повторной обработке сообщений.
+- Создан новый webhook workflow: `n8n/Telegram Bot - Command Router.json`.
+- Добавлен CLI-обработчик коротких Telegram-команд: `scripts/telegram/command.js`.
+- Настроен `docker-compose.yml` для будущего HTTPS n8n URL: `https://n8n.webvibe-lead.fun`.
+- Обновлена быстрая инструкция: `docs/SIMPLE_IMPORT.md`.
+- Переписан `.claude/commands/done.md`: теперь агент сам формирует итог сессии, обновляет `TASKS.md` и `AGENT_HANDOFF.md`, а не спрашивает пользователя.
+- Переписан `TASKS.md` в читаемом UTF-8 с актуальными статусами.
 
-## Что переделано
-| Проблема | Решение |
-|----------|---------|
-| `bodyParameters` (старый формат) | JSON `body` с `contentType: application/json` |
-| `n8n-nodes-base.telegram` (требует credentials) | Прямые HTTP POST к Telegram API |
-| Единственная команда `/parse` | Все 10 команд в одном боте со Switch |
-| Дублирование сообщений | `offset=-1` в getUpdates (только новые) |
-| Импорт невозможен | Файлы готовы к прямому импорту в n8n UI |
+## Текущая архитектура Telegram workflow
+Новый workflow должен работать так:
 
-## Следующий шаг
-**День 11-12: Импортировать и активировать все 6 воркфлоу в n8n**
-
-Порядок действий:
-1. Открыть n8n UI: http://178.104.253.76:5678
-2. Импортировать 01-telegram-bot.json (главный бот)
-3. Активировать его
-4. Импортировать оставшиеся 5 воркфлоу
-5. Активировать все остальные
-6. Протестировать через Telegram: `/status`
-
-**Инструкция:** см. docs/N8N_IMPORT.md
-
-## Файлы готовы к импорту
-```
-✅ n8n/01-telegram-bot.json  (10 команд)
-✅ n8n/02-parser.json        (Cron 09:00)
-✅ n8n/03-filter.json        (Interval 30 мин)
-✅ n8n/04-audit.json         (Interval 30 мин)
-✅ n8n/05-followup.json      (Cron 10:00)
-✅ n8n/06-imap.json          (Interval 5 мин)
+```text
+Telegram message
+  -> Telegram Webhook
+  -> Extract Message
+  -> Route Command
+  -> HTTP Executor
+  -> Format Response
+  -> Send Telegram
 ```
 
-## Последняя ошибка
-Нет. Все воркфлоу готовы.
+Polling через `Interval`, `getUpdates` и `/tmp/telegram_offset.txt` больше не нужен.
 
-## Изменённые файлы в этой сессии
-- n8n/01-telegram-bot.json (переписан с поддержкой 10 команд)
-- n8n/02-parser.json (обновлен JSON body format)
-- n8n/03-filter.json (обновлен JSON body format)
-- n8n/04-audit.json (обновлен JSON body format)
-- n8n/05-followup.json (обновлен JSON body format)
-- n8n/06-imap.json (обновлен JSON body format)
-- docs/N8N_IMPORT.md (создан - инструкция импорта)
-- WORKFLOWS_SUMMARY.md (создан - резюме изменений)
-- TASKS.md (обновлен День 11)
-- scripts/import-workflows.js (создан опционально)
+## Важные файлы
+- `n8n/Telegram Bot - Command Router.json` - новый workflow для импорта в n8n.
+- `scripts/telegram/command.js` - CLI для `/status`, `/niches`, `/pause`, `/resume`, `/history`, `/logs`, `/calls`, `/help`.
+- `docs/SIMPLE_IMPORT.md` - короткая инструкция для домена `webvibe-lead.fun`.
+- `docker-compose.yml` - n8n env переменные для HTTPS URL.
+- `.claude/commands/done.md` - обновленная команда закрытия сессии.
+- `TASKS.md` - актуальный прогресс.
 
-## Контекст для быстрого старта
-- VPS: 178.104.253.76, port 3333 для HTTP executor
-- n8n UI: http://178.104.253.76:5678
-- Telegram Bot Token: уже в воркфлоу (не менять)
-- Chat ID: 5900706320 (для Telegram уведомлений)
-- Все детали в docs/N8N_IMPORT.md и WORKFLOWS_SUMMARY.md
+## Проверки
+Выполнено локально:
+
+```bash
+node -e "const fs=require('fs'); const wf=JSON.parse(fs.readFileSync('n8n/Telegram Bot - Command Router.json','utf8')); for (const n of wf.nodes) if (n.parameters && n.parameters.functionCode) new Function(n.parameters.functionCode); console.log('workflow ok')"
+node --check scripts/telegram/command.js
+docker compose config
+```
+
+Результат: workflow JSON валиден, Function-ноды компилируются, `command.js` проходит syntax check, compose config собирается.
+
+## Последняя ошибка / блокер
+Telegram webhook требует публичный HTTPS URL. У пользователя есть домен `webvibe-lead.fun`, но DNS/Caddy/SSL еще не настроены. Без HTTPS workflow webhook не сможет стабильно принимать сообщения от Telegram.
+
+Также `scripts/filter/index.js` и `scripts/audit/index.js` пока отсутствуют, поэтому `/filter` и `/run` в новом CLI возвращают заглушки.
+
+## Следующий конкретный шаг
+1. В DNS панели домена создать запись:
+
+```text
+Type: A
+Name: n8n
+Value: 178.104.253.76
+TTL: Auto
+```
+
+2. Проверить DNS:
+
+```bash
+nslookup n8n.webvibe-lead.fun
+```
+
+3. Залить измененные файлы на VPS:
+
+```bash
+scp docker-compose.yml root@178.104.253.76:/opt/leadgen/docker-compose.yml
+scp "n8n/Telegram Bot - Command Router.json" root@178.104.253.76:/opt/leadgen/n8n/
+scp scripts/telegram/command.js root@178.104.253.76:/opt/leadgen/scripts/telegram/
+```
+
+4. На VPS поставить Caddy и перезапустить проект:
+
+```bash
+ssh root@178.104.253.76
+apt update
+apt install -y caddy
+cat >/etc/caddy/Caddyfile <<'EOF'
+n8n.webvibe-lead.fun {
+    reverse_proxy 127.0.0.1:5678
+}
+EOF
+systemctl reload caddy
+cd /opt/leadgen
+docker compose up -d
+```
+
+5. Открыть:
+
+```text
+https://n8n.webvibe-lead.fun
+```
+
+6. В n8n удалить или деактивировать старые Telegram workflows с `Interval` / `Get Updates`.
+
+7. Импортировать `n8n/Telegram Bot - Command Router.json`, активировать workflow и установить Telegram webhook:
+
+```bash
+curl -X POST "https://api.telegram.org/bot8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A/setWebhook?url=https://n8n.webvibe-lead.fun/webhook/telegram-bot"
+curl "https://api.telegram.org/bot8695961256:AAFoN0toAyHFKVWo611iVDAa8IkOrfwga3A/getWebhookInfo"
+```
+
+8. Очистить старый polling:
+
+```bash
+rm -f /tmp/telegram_offset.txt
+pkill -f "scripts/telegram/bot.js" || true
+```
+
+## Осторожно
+- Не возвращаться к `Interval` для Telegram команд.
+- Не запускать `scripts/telegram/bot.js` параллельно с webhook workflow: это polling-бот, он может конфликтовать.
+- В рабочем дереве есть удаление старого `n8n/01-telegram-bot.json`; перед commit нужно решить, включать ли это удаление или оставить вне commit.
