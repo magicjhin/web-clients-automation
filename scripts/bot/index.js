@@ -5,7 +5,7 @@
 const https = require('https');
 const express = require('express');
 const config = require('../shared/config');
-const logger = require('../shared/logger');
+const log = require('../shared/logger')('bot');
 const telegram = require('./telegram');
 const cron = require('./cron');
 
@@ -20,7 +20,7 @@ app.post('/webhook/telegram', async (req, res) => {
     await telegram.handleUpdate(req.body);
   } catch (err) {
     console.error('[webhook] Unhandled error:', err.message);
-    await logger.log('error', 'bot', `Webhook error: ${err.message}`);
+    await log.error(`Webhook error: ${err.message}`);
   }
 });
 
@@ -72,7 +72,7 @@ async function start() {
 
   cron.start();
 
-  await logger.log('info', 'bot', 'Bot started successfully');
+  await log.info('Bot started successfully');
 
   await telegram.sendMessage(
     config.telegram.chatId,
@@ -85,7 +85,7 @@ async function start() {
 start().catch(async (err) => {
   console.error('[bot] Fatal startup error:', err.message);
   try {
-    await logger.log('error', 'bot', `Fatal startup: ${err.message}`);
+    await log.error(`Fatal startup: ${err.message}`);
   } catch (_) {}
   process.exit(1);
 });

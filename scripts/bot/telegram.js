@@ -7,7 +7,7 @@ const { execFile } = require('child_process');
 const path = require('path');
 const config = require('../shared/config');
 const db = require('../shared/db');
-const logger = require('../shared/logger');
+const log = require('../shared/logger')('bot');
 
 const SCRIPTS_DIR = path.join(__dirname, '..');
 
@@ -335,7 +335,7 @@ async function handleUpdate(update) {
   const cmd = rawCmd.split('@')[0].toLowerCase();
   const arg = argParts.join(' ').trim();
 
-  await logger.log('info', 'bot', `Command: ${cmd} ${arg}`.trim());
+  await log.info(`Command: ${cmd} ${arg}`.trim());
 
   switch (cmd) {
     case '/start':

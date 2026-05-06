@@ -7,7 +7,7 @@ const { execFile } = require('child_process');
 const path = require('path');
 const { sendMessage } = require('./telegram');
 const config = require('../shared/config');
-const logger = require('../shared/logger');
+const log = require('../shared/logger')('cron');
 
 const SCRIPTS_DIR = path.join(__dirname, '..');
 
@@ -34,7 +34,7 @@ async function notify(text) {
 
 async function runParser() {
   if (global.systemPaused) return;
-  await logger.log('info', 'cron', 'Cron: запуск автопарсинга');
+  await log.info( 'Cron: запуск автопарсинга');
   const result = await runScript('parser/index.js', ['--auto']);
   const output = (result.stdout || '').trim();
   if (output) {
@@ -50,10 +50,10 @@ async function runFilter() {
   const scriptPath = path.join(SCRIPTS_DIR, 'filter/index.js');
   const fs = require('fs');
   if (!fs.existsSync(scriptPath)) {
-    await logger.log('info', 'cron', 'Cron filter: скрипт не реализован, пропуск');
+    await log.info( 'Cron filter: скрипт не реализован, пропуск');
     return;
   }
-  await logger.log('info', 'cron', 'Cron: запуск фильтрации');
+  await log.info( 'Cron: запуск фильтрации');
   const result = await runScript('filter/index.js', ['--batch=10']);
   const output = (result.stdout || '').trim();
   if (output) {
@@ -69,10 +69,10 @@ async function runAudit() {
   const scriptPath = path.join(SCRIPTS_DIR, 'audit/index.js');
   const fs = require('fs');
   if (!fs.existsSync(scriptPath)) {
-    await logger.log('info', 'cron', 'Cron audit: скрипт не реализован, пропуск');
+    await log.info( 'Cron audit: скрипт не реализован, пропуск');
     return;
   }
-  await logger.log('info', 'cron', 'Cron: запуск аудита');
+  await log.info( 'Cron: запуск аудита');
   const result = await runScript('audit/index.js', ['--batch=5']);
   const output = (result.stdout || '').trim();
   if (output) {
@@ -88,10 +88,10 @@ async function runFollowup() {
   const scriptPath = path.join(SCRIPTS_DIR, 'email/followup.js');
   const fs = require('fs');
   if (!fs.existsSync(scriptPath)) {
-    await logger.log('info', 'cron', 'Cron followup: скрипт не реализован, пропуск');
+    await log.info( 'Cron followup: скрипт не реализован, пропуск');
     return;
   }
-  await logger.log('info', 'cron', 'Cron: запуск followup писем');
+  await log.info( 'Cron: запуск followup писем');
   const result = await runScript('email/followup.js', []);
   const output = (result.stdout || '').trim();
   if (output) {
@@ -108,7 +108,7 @@ async function runImap() {
   }
   const result = await runScript('email/imap.js', []);
   if (result.error && !result.stdout) {
-    await logger.log('error', 'cron', `IMAP ошибка: ${result.error.slice(0, 200)}`);
+    await log.error(`IMAP ошибка: ${result.error.slice(0, 200)}`);
   }
 }
 
