@@ -156,23 +156,14 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
 
         for (const company of companies) {
           try {
-            const checkQuery = company.company_code
-              ? 'SELECT id FROM companies WHERE company_code = $1'
-              : 'SELECT id FROM companies WHERE niche_id = $1 AND name = $2';
-            const checkParams = company.company_code
-              ? [company.company_code]
-              : [nicheId, company.name];
-
-            const exists = await db.one(checkQuery, checkParams);
-            if (!exists) {
-              await db.query(
-                `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
-                 VALUES ($1, $2, $3, $4, 'raw', NOW())`,
-                [nicheId, company.name, company.company_code || null, company.rekvizitai_url || null]
-              );
-              companiesNew++;
-              parseState.companiesNew = companiesNew;
-            }
+            await db.query(
+              `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
+               VALUES ($1, $2, $3, $4, 'raw', NOW())
+               ON CONFLICT (rekvizitai_url) DO NOTHING`,
+              [nicheId, company.name, company.company_code || null, company.rekvizitai_url]
+            );
+            companiesNew++;
+            parseState.companiesNew = companiesNew;
           } catch (insertError) {
             await log.warn(`Не удалось вставить: ${company.name} — ${insertError.message}`);
           }

@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS companies (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_rekvizitai_url ON companies(rekvizitai_url) WHERE rekvizitai_url IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_companies_status ON companies(status);
 CREATE INDEX IF NOT EXISTS idx_companies_niche ON companies(niche_id);
 CREATE INDEX IF NOT EXISTS idx_companies_vip ON companies(is_vip) WHERE is_vip = true;
