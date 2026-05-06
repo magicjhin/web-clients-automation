@@ -1,0 +1,368 @@
+{
+  "name": "Leadgen Telegram Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "telegram-bot",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-telegram",
+      "name": "Webhook - Telegram",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "leadgen-telegram-bot"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "key": "text",
+              "condition": "contains",
+              "value": "/parse"
+            }
+          ]
+        }
+      },
+      "id": "parse-switch",
+      "name": "Switch - Parse Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        450,
+        150
+      ],
+      "connections": {
+        "telegram-bot": [
+          [
+            {
+              "node": "parse-switch",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const text = $input.first().json.message.text;\nconst match = text.match(/\\/parse\\s*(\\d+)?\\s*(auto)?/);\nconst nicheId = match?.[1];\nconst isAuto = match?.[2] === 'auto';\n\nreturn {\n  json: {\n    command: 'parse',\n    nicheId: nicheId ? parseInt(nicheId) : null,\n    isAuto: !!isAuto,\n    chatId: $input.first().json.message.chat.id,\n    userId: $input.first().json.message.from.id\n  }\n};"
+      },
+      "id": "extract-parse-args",
+      "name": "Extract Parse Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        650,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "key": "command",
+              "condition": "equals",
+              "value": "parse"
+            }
+          ]
+        }
+      },
+      "id": "route-parse",
+      "name": "Route - Parse Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        850,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/parser/index.js --list"
+      },
+      "id": "exec-parse-list",
+      "name": "Execute - Parse List",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/parser/index.js --niche={{ $node[\"extract-parse-args\"].json.nicheId }}"
+      },
+      "id": "exec-parse-niche",
+      "name": "Execute - Parse Niche",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/parser/index.js --auto"
+      },
+      "id": "exec-parse-auto",
+      "name": "Execute - Parse Auto",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "key": "text",
+              "condition": "contains",
+              "value": "/status"
+            }
+          ]
+        }
+      },
+      "id": "status-switch",
+      "name": "Switch - Status Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        450,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/leadgen && node scripts/parser/index.js --status"
+      },
+      "id": "exec-status",
+      "name": "Execute - Status",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "key": "text",
+              "condition": "contains",
+              "value": "/help"
+            }
+          ]
+        }
+      },
+      "id": "help-switch",
+      "name": "Switch - Help Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        450,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return {\n  json: {\n    chatId: $input.first().json.message.chat.id,\n    text: `🤖 *Leadgen Bot* — управление системой лидогенерации\\n\\n*Команды:*\\n📊 /parse — показать топ 5 ниш для парсинга\\n📊 /parse [1-50] — парсить конкретную нишу\\n🔄 /parse auto — автоматический парсинг\\n📈 /status — статус текущих процессов\\n❓ /help — эта справка`\n  }\n};"
+      },
+      "id": "format-help",
+      "name": "Format Help Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        650,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const result = $input.first().json.response || $input.first().json;\nconst chatId = $input.first().json.chatId || $node[\"webhook-telegram\"].json.message.chat.id;\n\nlet message = '';\nif (typeof result === 'string') {\n  message = result;\n} else if (result.message) {\n  message = result.message;\n} else if (result.error) {\n  message = `❌ ${result.error}`;\n} else {\n  message = JSON.stringify(result, null, 2);\n}\n\nreturn {\n  json: {\n    chatId: chatId,\n    text: message\n  }\n};"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "credentialType": "telegramBotApi",
+        "resource": "message",
+        "chatId": "={{ $node[\"format-response\"].json.chatId }}",
+        "text": "={{ $node[\"format-response\"].json.text }}",
+        "parseMode": "Markdown"
+      },
+      "id": "send-telegram",
+      "name": "Send Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "webhook-telegram": [
+      [
+        {
+          "node": "parse-switch",
+          "type": "main",
+          "index": 0
+        },
+        {
+          "node": "status-switch",
+          "type": "main",
+          "index": 0
+        },
+        {
+          "node": "help-switch",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "parse-switch": [
+      [
+        {
+          "node": "extract-parse-args",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "extract-parse-args": [
+      [
+        {
+          "node": "route-parse",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "route-parse": [
+      [
+        {
+          "node": "exec-parse-list",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "exec-parse-niche",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "exec-parse-auto",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "status-switch": [
+      [
+        {
+          "node": "exec-status",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "help-switch": [
+      [
+        {
+          "node": "format-help",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "exec-parse-list": [
+      [
+        {
+          "node": "format-response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "exec-parse-niche": [
+      [
+        {
+          "node": "format-response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "exec-parse-auto": [
+      [
+        {
+          "node": "format-response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "exec-status": [
+      [
+        {
+          "node": "format-response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "format-help": [
+      [
+        {
+          "node": "format-response",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ],
+    "format-response": [
+      [
+        {
+          "node": "send-telegram",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d4eab78e-7d4f-4c01-9b86-1234567890ab",
+  "meta": {
+    "templateId": null
+  },
+  "pinData": {}
+}
