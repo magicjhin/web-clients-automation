@@ -123,7 +123,6 @@ async function cmdParse(chatId, arg) {
     return;
   }
 
-  // Определяем нишу — по ID (число) или по имени (строка)
   const parser = require('../parser/index');
   let niche;
   try {
@@ -138,33 +137,28 @@ async function cmdParse(chatId, arg) {
     return;
   }
 
-  await sendMessage(chatId, `🔄 Парсю нишу *${niche.name}* (ID: ${niche.id})...\n\nЭто может занять несколько минут.`);
-
-  const result = await runScript('parser/index.js', [`--niche=${niche.id}`]);
-
-  if (result.error && !result.stdout) {
-    await sendMessage(chatId, `❌ Ошибка парсинга: ${result.error.slice(0, 500)}`);
+  if (!niche) {
+    await sendMessage(chatId, `❌ Ниша не найдена: "${arg}"\n\nПосмотри список: /niches`);
     return;
   }
 
-  // Пробуем распарсить JSON результат
+  await sendMessage(chatId, `🔄 Парсю нишу *${niche.name}* (ID: ${niche.id})...\n\nЭто может занять 10-20 минут. Пришлю результат когда закончу.`);
+
+  // Запускаем парсер напрямую в том же процессе (без execFile — нет таймаута)
   try {
-    const data = JSON.parse(result.stdout);
-    if (data.error) {
-      await sendMessage(chatId, `❌ ${data.error}`);
+    const result = await parser.parseNiche(niche.id);
+    if (result.error) {
+      await sendMessage(chatId, `❌ ${result.error}`);
       return;
     }
     await sendMessage(chatId,
       `✅ *Парсинг завершён!*\n\n` +
-      `📁 Ниша: *${data.niche || niche.name}*\n` +
-      `🏢 Найдено компаний: *${data.companiesFound || 0}*\n` +
-      `🆕 Новых в БД: *${data.companiesNew || 0}*\n\n` +
-      `_Следующий шаг: /filter когда будет реализован_`
+      `📁 Ниша: *${result.niche || niche.name}*\n` +
+      `🏢 Найдено компаний: *${result.companiesFound || 0}*\n` +
+      `🆕 Новых в БД: *${result.companiesNew || 0}*`
     );
-  } catch (_) {
-    // Если вывод не JSON — показываем как есть
-    const output = (result.stdout || '').trim();
-    await sendMessage(chatId, output.slice(0, 3000) || '✅ Парсинг завершён');
+  } catch (err) {
+    await sendMessage(chatId, `❌ Ошибка парсинга: ${err.message.slice(0, 500)}`);
   }
 }
 

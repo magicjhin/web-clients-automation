@@ -1,6 +1,5 @@
 // МОДУЛЬ: parser/scraper.js
 // ЧТО: Puppeteer парсер для rekvizitai.vz.lt — собирает компании по категории
-// КАК ЗАПУСТИТЬ: используется через parser/index.js
 // URL формат: https://rekvizitai.vz.lt/imones/{category_key}/{page}/
 
 const puppeteer = require('puppeteer');
@@ -11,8 +10,8 @@ const BASE_URL = 'https://rekvizitai.vz.lt';
 
 async function scrapeNiche(categoryKey, nicheId) {
   let browser;
-  const collectedCompanies = [];
   let companiesNew = 0;
+  let companiesFound = 0;
 
   try {
     browser = await puppeteer.launch({
@@ -27,43 +26,46 @@ async function scrapeNiche(categoryKey, nicheId) {
 
     await log.info(`Запуск парсинга категории: "${categoryKey}" (nicheId: ${nicheId})`);
 
+    // Узнаём с какой страницы продолжать (если парсинг прерывался)
+    const nicheData = await db.one('SELECT last_parsed_page, total_pages FROM niches WHERE id = $1', [nicheId]);
+    const startPage = (nicheData.last_parsed_page || 0) + 1;
+
     // Загружаем первую страницу чтобы узнать сколько страниц всего
     const firstUrl = `${BASE_URL}/imones/${categoryKey}/1/`;
     await page.goto(firstUrl, { waitUntil: 'networkidle2' });
     await new Promise(r => setTimeout(r, 2000));
 
-    const finalUrl = page.url();
-    await log.info(`Финальный URL: ${finalUrl}`);
+    await log.info(`Финальный URL: ${page.url()}`);
 
-    // Определяем количество страниц из пагинации
-    let pageCount = 1;
-    try {
-      pageCount = await page.evaluate(() => {
-        // Пагинация имеет вид "1234...359" — берём последнее число
-        const pagLinks = Array.from(document.querySelectorAll('.pagination a, [class*="pag"] a'));
-        let maxPage = 1;
-        for (const link of pagLinks) {
-          const num = parseInt(link.textContent.trim());
-          if (!isNaN(num) && num > maxPage) maxPage = num;
-          // Также проверяем href: /imones/category/359/
-          const href = link.getAttribute('href') || '';
-          const match = href.match(/\/(\d+)\/$/);
-          if (match) {
-            const n = parseInt(match[1]);
-            if (n > maxPage) maxPage = n;
+    // Определяем количество страниц
+    let totalPages = nicheData.total_pages || 1;
+    if (!nicheData.total_pages) {
+      try {
+        totalPages = await page.evaluate(() => {
+          const pagLinks = Array.from(document.querySelectorAll('.pagination a, [class*="pag"] a'));
+          let maxPage = 1;
+          for (const link of pagLinks) {
+            const num = parseInt(link.textContent.trim());
+            if (!isNaN(num) && num > maxPage) maxPage = num;
+            const href = link.getAttribute('href') || '';
+            const match = href.match(/\/(\d+)\/$/);
+            if (match) {
+              const n = parseInt(match[1]);
+              if (n > maxPage) maxPage = n;
+            }
           }
-        }
-        return maxPage;
-      });
-    } catch (e) {
-      await log.warn(`Не удалось определить количество страниц: ${e.message}`);
+          return maxPage;
+        });
+        await db.query('UPDATE niches SET total_pages = $1 WHERE id = $2', [totalPages, nicheId]);
+      } catch (e) {
+        await log.warn(`Не удалось определить количество страниц: ${e.message}`);
+      }
     }
 
-    pageCount = Math.min(pageCount, 50); // лимит 50 страниц = ~1000 компаний
-    await log.info(`Страниц для парсинга: ${pageCount}`);
+    await log.info(`Всего страниц: ${totalPages}, начинаем с страницы: ${startPage}`);
 
     // Парсим каждую страницу
-    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+    for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
       try {
         if (pageNum > 1) {
           const url = `${BASE_URL}/imones/${categoryKey}/${pageNum}/`;
@@ -74,29 +76,23 @@ async function scrapeNiche(categoryKey, nicheId) {
         const companies = await page.evaluate(() => {
           const seen = new Set();
           const result = [];
-
-          // Все ссылки на компании — /imone/slug/
           const links = Array.from(document.querySelectorAll('a[href*="/imone/"]'));
 
           for (const link of links) {
             const href = link.getAttribute('href') || '';
-            // Пропускаем якоря и служебные ссылки
             if (!href.match(/\/imone\/[^/]+\/$/)) continue;
             if (seen.has(href)) continue;
 
             const name = link.textContent?.trim() || '';
             if (!name || name.length < 2) continue;
-            // Пропускаем "Žiūrėti kontaktus »" и похожие служебные тексты
-            if (name.includes('»') || name.includes('kontakt')) continue;
+            if (name.includes('»') || name.toLowerCase().includes('kontakt')) continue;
 
             seen.add(href);
 
-            // Ищем код компании (~7-9 цифр) в контейнере
             const container = link.closest('li, tr, div.company, div.col, article') || link.parentElement?.parentElement;
             const allText = container?.textContent || '';
             const codeMatch = allText.match(/\b(\d{7,9})\b/);
             const code = codeMatch ? codeMatch[1] : '';
-
             const fullUrl = href.startsWith('http') ? href : `${location.origin}${href}`;
 
             result.push({
@@ -105,11 +101,11 @@ async function scrapeNiche(categoryKey, nicheId) {
               rekvizitai_url: fullUrl
             });
           }
-
           return result;
         });
 
-        await log.info(`Страница ${pageNum}/${pageCount}: найдено ${companies.length} компаний`);
+        await log.info(`Страница ${pageNum}/${totalPages}: найдено ${companies.length} компаний`);
+        companiesFound += companies.length;
 
         for (const company of companies) {
           try {
@@ -121,7 +117,6 @@ async function scrapeNiche(categoryKey, nicheId) {
               : [nicheId, company.name];
 
             const exists = await db.one(checkQuery, checkParams);
-
             if (!exists) {
               await db.query(
                 `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
@@ -130,25 +125,25 @@ async function scrapeNiche(categoryKey, nicheId) {
               );
               companiesNew++;
             }
-
-            collectedCompanies.push(company);
           } catch (insertError) {
             await log.warn(`Не удалось вставить: ${company.name} — ${insertError.message}`);
           }
         }
+
+        // Сохраняем прогресс после каждой страницы
+        await db.query(
+          'UPDATE niches SET last_parsed_page = $1, companies_found = $2 WHERE id = $3',
+          [pageNum, companiesFound, nicheId]
+        );
+
       } catch (pageError) {
         await log.warn(`Ошибка при парсинге страницы ${pageNum}: ${pageError.message}`);
       }
     }
 
-    await db.query(
-      'UPDATE niches SET companies_found = companies_found + $1 WHERE id = $2',
-      [collectedCompanies.length, nicheId]
-    );
+    await log.info(`✅ Завершён парсинг "${categoryKey}": ${companiesFound} компаний (${companiesNew} новых)`);
 
-    await log.info(`✅ Завершён парсинг "${categoryKey}": ${collectedCompanies.length} компаний (${companiesNew} новых)`);
-
-    return { companiesFound: collectedCompanies.length, companiesNew, categoryKey };
+    return { companiesFound, companiesNew, categoryKey };
 
   } catch (error) {
     await log.error(`Критическая ошибка при парсинге "${categoryKey}": ${error.message}`);

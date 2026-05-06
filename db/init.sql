@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS niches (
     status VARCHAR(50) DEFAULT 'pending',
     companies_found INT DEFAULT 0,
     companies_qualified INT DEFAULT 0,
+    total_pages INT DEFAULT 0,
+    last_parsed_page INT DEFAULT 0,
     parsed_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
