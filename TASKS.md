@@ -27,10 +27,12 @@
 ✅ Тест: конфиг загружается, БД доступна
 
 ## День 4 — Парсер (rekvizitai.lt)
-📋 scripts/parser/scraper.js — Puppeteer, пагинация
-📋 scripts/parser/normalizer.js — очистка данных
-📋 scripts/parser/index.js — оркестрация + фильтры при парсинге
-📋 Тест: распарсить одну небольшую нишу
+✅ scripts/parser/scraper.js — Puppeteer, пагинация (50 страниц max)
+✅ scripts/parser/normalizer.js — очистка данных (email, phone, URL)
+✅ scripts/parser/index.js — оркестрация (/parse, /parse 1, /parse auto)
+✅ db/niches_seed.sql — 50 лучших литовских ниш, отранжированы
+✅ scripts/telegram/bot.js — Telegram команды для парсера
+✅ scripts/init-db.js — инициализация БД с нишами
 
 ## День 5 — Фильтр часть 1
 📋 scripts/filter/pagespeed.js — PageSpeed API
