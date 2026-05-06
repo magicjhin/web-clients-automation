@@ -60,13 +60,20 @@ async function makeRequest(method, path, body = null) {
 
 async function importWorkflow(filePath) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
+    let content = fs.readFileSync(filePath, 'utf8');
+    // Remove BOM if present
+    if (content.charCodeAt(0) === 0xFEFF) {
+      content = content.slice(1);
+    }
     const workflow = JSON.parse(content);
     const fileName = path.basename(filePath);
 
     console.log(`📥 Importing ${fileName}...`);
 
-    const response = await makeRequest('POST', '/api/v1/workflows', workflow);
+    // Remove 'active' field before importing
+    const { active, ...workflowData } = workflow;
+
+    const response = await makeRequest('POST', '/api/v1/workflows', workflowData);
 
     if (response.status !== 200 && response.status !== 201) {
       console.error(`  ❌ Failed: ${response.status}`, response.data);
