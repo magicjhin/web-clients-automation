@@ -40,15 +40,12 @@ services:
         condition: service_healthy
 
   node:
-    image: node:20
+    build: .
     container_name: leadgen_node
     restart: unless-stopped
     working_dir: /app
     volumes:
       - ./scripts:/app/scripts
-      - ./node_modules:/app/node_modules
-      - ./package.json:/app/package.json
-      - ./package-lock.json:/app/package-lock.json
       - /tmp/screenshots:/tmp/screenshots
     env_file:
       - .env
