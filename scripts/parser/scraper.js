@@ -70,8 +70,10 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
     await log.info(`Запуск парсинга категории: "${categoryKey}" (nicheId: ${nicheId})`);
 
     // Узнаём с какой страницы продолжать (если парсинг прерывался)
-    const nicheData = await db.one('SELECT last_parsed_page, total_pages FROM niches WHERE id = $1', [nicheId]);
+    const nicheData = await db.one('SELECT last_parsed_page, total_pages, companies_found FROM niches WHERE id = $1', [nicheId]);
     const startPage = (nicheData.last_parsed_page || 0) + 1;
+    companiesFound = parseInt(nicheData.companies_found) || 0;
+    parseState.companiesFound = companiesFound;
 
     // Загружаем первую страницу чтобы узнать сколько страниц всего
     const firstUrl = `${BASE_URL}/imones/${categoryKey}/1/`;
@@ -156,16 +158,13 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
 
         for (const company of companies) {
           try {
-            const exists = await db.one(
-              'SELECT id FROM companies WHERE rekvizitai_url = $1',
-              [company.rekvizitai_url]
+            const res = await db.query(
+              `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
+               VALUES ($1, $2, $3, $4, 'raw', NOW())
+               ON CONFLICT (rekvizitai_url) DO NOTHING`,
+              [nicheId, company.name, company.company_code || null, company.rekvizitai_url]
             );
-            if (!exists) {
-              await db.query(
-                `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
-                 VALUES ($1, $2, $3, $4, 'raw', NOW())`,
-                [nicheId, company.name, company.company_code || null, company.rekvizitai_url]
-              );
+            if (res.rowCount > 0) {
               companiesNew++;
               parseState.companiesNew = companiesNew;
             }
