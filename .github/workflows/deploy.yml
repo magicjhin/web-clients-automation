@@ -19,7 +19,7 @@ jobs:
           script: |
             set -e
             cd /opt/leadgen
-            rm -f package-lock.json
+            rm -rf package-lock.json
             git pull origin main
             docker-compose up -d --remove-orphans
             docker-compose restart node
