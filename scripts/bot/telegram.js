@@ -85,32 +85,43 @@ async function cmdStatus(chatId) {
   }
 }
 
-async function cmdNiches(chatId) {
-  try {
-    const rows = await db.many(`
-      SELECT id, ai_rank, name, search_term, companies_found, companies_qualified, status
-      FROM niches
-      ORDER BY ai_rank ASC
-    `, []);
+async function cmdNiches(chatId, arg) {
+  const PAGE_SIZE = 50;
+  const page = Math.max(1, parseInt(arg) || 1);
+  const offset = (page - 1) * PAGE_SIZE;
 
-    if (rows.length === 0) {
-      await sendMessage(chatId, '📭 Нет ниш в БД. Запусти инициализацию.');
+  try {
+    const total = await db.one(`SELECT COUNT(*) as count FROM niches`, []);
+    const totalCount = parseInt(total.count);
+
+    if (totalCount === 0) {
+      await sendMessage(chatId, '📭 Нет ниш в БД. Запусти /discover');
       return;
     }
 
+    const rows = await db.many(`
+      SELECT id, name, search_term, companies_found, companies_qualified, status
+      FROM niches
+      ORDER BY id ASC
+      LIMIT $1 OFFSET $2
+    `, [PAGE_SIZE, offset]);
+
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
     const statusIcon = { pending: '🟢', parsing: '🔄', completed: '✅', paused: '⏸' };
-    let text = `📊 *Все ниши для парсинга (${rows.length}):*\n\n`;
+
+    let text = `📊 *Ниши (${page}/${totalPages}, всего ${totalCount}):*\n\n`;
     rows.forEach((n) => {
       const icon = statusIcon[n.status] || '📌';
-      text += `${icon} [${n.id}] *${n.name}*\n`;
-      text += `   🔍 ${n.search_term}\n`;
-      if (n.companies_found > 0) {
-        text += `   Найдено: ${n.companies_found} | Qualified: ${n.companies_qualified}\n`;
-      }
-      text += '\n';
+      const stats = n.companies_found > 0 ? ` — ${n.companies_found} компаний` : '';
+      text += `${icon} \`${n.id}\` ${n.name}${stats}\n`;
     });
 
-    text += `_Парсить: /parse 1 или /parse Стоматологи_`;
+    const nav = [];
+    if (page > 1) nav.push(`/niches ${page - 1}`);
+    if (page < totalPages) nav.push(`/niches ${page + 1}`);
+    if (nav.length > 0) text += `\n_${nav.join('  |  ')}_`;
+    text += `\n\n_Парсить: /parse <id>_`;
+
     await sendMessage(chatId, text);
   } catch (err) {
     await sendMessage(chatId, `❌ Ошибка: ${err.message}`);
@@ -506,7 +517,7 @@ async function handleUpdate(update) {
     case '/status':
       return cmdStatus(chatId);
     case '/niches':
-      return cmdNiches(chatId);
+      return cmdNiches(chatId, arg);
     case '/parse':
       return cmdParse(chatId, arg);
     case '/parse_status':
