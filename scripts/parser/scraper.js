@@ -167,7 +167,7 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
             const res = await db.query(
               `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
                VALUES ($1, $2, $3, $4, 'raw', NOW())
-               ON CONFLICT (rekvizitai_url) DO NOTHING`,
+               ON CONFLICT (rekvizitai_url) WHERE rekvizitai_url IS NOT NULL DO NOTHING`,
               [nicheId, company.name, company.company_code || null, company.rekvizitai_url]
             );
             if (res.rowCount > 0) {
@@ -175,7 +175,7 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
               parseState.companiesNew = companiesNew;
             }
           } catch (insertError) {
-            await log.warn(`Не удалось вставить: ${company.name} — ${insertError.message}`);
+            await log.error(`INSERT failed: ${company.rekvizitai_url} — ${insertError.message}`);
           }
         }
 
