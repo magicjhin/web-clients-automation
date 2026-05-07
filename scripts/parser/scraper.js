@@ -110,6 +110,9 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
     parseState.totalPages = totalPages;
     await log.info(`Всего страниц: ${totalPages}, начинаем с страницы: ${startPage}`);
 
+    // Глобальный Set для дедупликации по всем страницам
+    const seenUrls = new Set();
+
     // Парсим каждую страницу
     for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
       try {
@@ -119,21 +122,17 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
           await new Promise(r => setTimeout(r, 1500));
         }
 
-        const companies = await page.evaluate(() => {
-          const seen = new Set();
+        const rawCompanies = await page.evaluate(() => {
           const result = [];
           const links = Array.from(document.querySelectorAll('a[href*="/imone/"]'));
 
           for (const link of links) {
             const href = link.getAttribute('href') || '';
             if (!href.match(/\/imone\/[^/]+\/$/)) continue;
-            if (seen.has(href)) continue;
 
             const name = link.textContent?.trim() || '';
             if (!name || name.length < 2) continue;
             if (name.includes('»') || name.toLowerCase().includes('kontakt')) continue;
-
-            seen.add(href);
 
             const container = link.closest('li, tr, div.company, div.col, article') || link.parentElement?.parentElement;
             const allText = container?.textContent || '';
@@ -150,7 +149,14 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
           return result;
         });
 
-        await log.info(`Страница ${pageNum}/${totalPages}: найдено ${companies.length} компаний`);
+        // Фильтруем дубли по всем страницам (боковые блоки повторяются)
+        const companies = rawCompanies.filter(c => {
+          if (seenUrls.has(c.rekvizitai_url)) return false;
+          seenUrls.add(c.rekvizitai_url);
+          return true;
+        });
+
+        await log.info(`Страница ${pageNum}/${totalPages}: найдено ${rawCompanies.length} (уникальных: ${companies.length})`);
         companiesFound += companies.length;
         parseState.currentPage = pageNum;
         parseState.companiesFound = companiesFound;
