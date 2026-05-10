@@ -34,8 +34,10 @@
 ✅ `scripts/parser/sync-categories.js` - синхронизация search_term с реальными URL ключами сайта  
 ✅ `scripts/parser/fix-niches-mapping.sql` - правильный маппинг всех 50 ниш  
 ✅ `db/niches_seed.sql` - seed 50 ниш (устарел, теперь используется /discover)  
-✅ Парсинг протестирован: ниша Restoranai ir Barai (359 стр)  
-✅ Дедупликация по `rekvizitai_url` (SELECT перед INSERT)
+✅ Парсинг протестирован: ниша Akmens gaminiai (34 стр), 300 компаний записано  
+✅ Дедупликация по `rekvizitai_url` (ON CONFLICT DO NOTHING)  
+✅ Задержка между страницами увеличена до 30-60 сек (защита от IP-бана)  
+🔄 IP-блокировка на стр. 21+ — тестируем решение с 30-60 сек задержкой (запуск сегодня ночью в 00:00)
 
 ## День 5 - Фильтр часть 1
 📋 `scripts/filter/pagespeed.js` - PageSpeed API  
@@ -69,7 +71,7 @@
 ## День 10 - Telegram бот
 ✅ `scripts/bot/index.js` - Express сервер + setWebhook + запуск cron  
 ✅ `scripts/bot/telegram.js` - все команды: /status, /niches, /parse, /parse_status, /reset_niche, /discover, /discover_status, /filter, /run, /pause, /resume, /history, /logs, /calls, /help  
-✅ `scripts/bot/cron.js` - node-cron расписания  
+✅ `scripts/bot/cron.js` - автопарсинг перенесён на 00:00, вызов напрямую (не через execFile)  
 ✅ Все команды работают на VPS
 
 ## День 11 - HTTPS и домен
