@@ -8,6 +8,14 @@ const log = require('../shared/logger')('scraper');
 
 const BASE_URL = 'https://rekvizitai.vz.lt';
 
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+];
+
 // Глобальное состояние активного парсинга (один парсинг за раз)
 const parseState = {
   active: false,
@@ -56,16 +64,24 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
   parseState.startedAt = new Date();
   parseState.lastPageAt = null;
 
-  try {
+  let uaIndex = 0;
+
+  async function launchBrowser() {
+    if (browser) { try { await browser.close(); } catch (_) {} }
     browser = await puppeteer.launch({
       headless: 'new',
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
     });
+    const p = await browser.newPage();
+    await p.setUserAgent(USER_AGENTS[uaIndex % USER_AGENTS.length]);
+    p.setDefaultNavigationTimeout(45000);
+    p.setDefaultTimeout(45000);
+    uaIndex++;
+    return p;
+  }
 
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    page.setDefaultNavigationTimeout(45000);
-    page.setDefaultTimeout(45000);
+  try {
+    let page = await launchBrowser();
 
     await log.info(`Запуск парсинга категории: "${categoryKey}" (nicheId: ${nicheId})`);
 
@@ -118,17 +134,31 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
     for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
       try {
         if (pageNum > 1) {
-          // Случайная задержка 2-4 сек между страницами чтобы не блокировал сайт
+          // Случайная задержка 2-4 сек между страницами
           const delay = 2000 + Math.floor(Math.random() * 2000);
           await new Promise(r => setTimeout(r, delay));
           const url = `${BASE_URL}/imones/${categoryKey}/${pageNum}/`;
           await page.goto(url, { waitUntil: 'networkidle2' });
         }
+        let appeared = false;
         try {
           await page.waitForSelector('div.company', { timeout: 20000 });
-        } catch (e) {
-          await log.warn(`Страница ${pageNum}: карточки не появились, пропускаем`);
-          continue;
+          appeared = true;
+        } catch (_) {}
+
+        if (!appeared) {
+          // Сайт заблокировал — перезапускаем браузер с новым User-Agent, ждём 30 сек
+          await log.warn(`Страница ${pageNum}: блокировка, перезапуск браузера (UA #${uaIndex})`);
+          await new Promise(r => setTimeout(r, 30000));
+          page = await launchBrowser();
+          const url = `${BASE_URL}/imones/${categoryKey}/${pageNum}/`;
+          await page.goto(url, { waitUntil: 'networkidle2' });
+          try {
+            await page.waitForSelector('div.company', { timeout: 20000 });
+          } catch (e) {
+            await log.warn(`Страница ${pageNum}: повторная блокировка, пропускаем`);
+            continue;
+          }
         }
 
         // Дебаг: сколько div.company реально на странице
