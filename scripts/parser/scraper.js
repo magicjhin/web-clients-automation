@@ -118,11 +118,14 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
     for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
       try {
         if (pageNum > 1) {
+          // Случайная задержка 2-4 сек между страницами чтобы не блокировал сайт
+          const delay = 2000 + Math.floor(Math.random() * 2000);
+          await new Promise(r => setTimeout(r, delay));
           const url = `${BASE_URL}/imones/${categoryKey}/${pageNum}/`;
           await page.goto(url, { waitUntil: 'networkidle2' });
         }
         try {
-          await page.waitForSelector('div.company', { timeout: 15000 });
+          await page.waitForSelector('div.company', { timeout: 20000 });
         } catch (e) {
           await log.warn(`Страница ${pageNum}: карточки не появились, пропускаем`);
           continue;
