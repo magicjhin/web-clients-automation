@@ -171,15 +171,22 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
         }
 
         // Дебаг: сколько div.company реально на странице
-        const debugCount = await page.evaluate(() => ({
-          total: document.querySelectorAll('div.company').length,
-          withTitle: document.querySelectorAll('div.company a.company-title').length,
-        }));
+        const debugCount = await page.evaluate(() => {
+          const container = document.querySelector('div.list-item');
+          if (!container) return { total: 0, withTitle: 0 };
+          return {
+            total: container.querySelectorAll('div.company').length,
+            withTitle: container.querySelectorAll('div.company a.company-title').length,
+          };
+        });
         await log.info(`Страница ${pageNum} DOM: div.company=${debugCount.total}, с a.company-title=${debugCount.withTitle}`);
 
         const rawCompanies = await page.evaluate(() => {
           const result = [];
-          const items = Array.from(document.querySelectorAll('div.company'));
+          // Берём только из основного блока div.list-item, игнорируем повторы внизу страницы
+          const container = document.querySelector('div.list-item');
+          if (!container) return result;
+          const items = Array.from(container.querySelectorAll('div.company'));
 
           for (const item of items) {
             const link = item.querySelector('a.company-title');
