@@ -128,6 +128,13 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
           continue;
         }
 
+        // Дебаг: сколько div.company реально на странице
+        const debugCount = await page.evaluate(() => ({
+          total: document.querySelectorAll('div.company').length,
+          withTitle: document.querySelectorAll('div.company a.company-title').length,
+        }));
+        await log.info(`Страница ${pageNum} DOM: div.company=${debugCount.total}, с a.company-title=${debugCount.withTitle}`);
+
         const rawCompanies = await page.evaluate(() => {
           const result = [];
           const items = Array.from(document.querySelectorAll('div.company'));
