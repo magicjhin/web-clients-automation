@@ -124,25 +124,20 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
 
         const rawCompanies = await page.evaluate(() => {
           const result = [];
-          const links = Array.from(document.querySelectorAll('a[href*="/imone/"]'));
+          const items = Array.from(document.querySelectorAll('div.list-item'));
 
-          for (const link of links) {
+          for (const item of items) {
+            const link = item.querySelector('a.company-title');
+            if (!link) continue;
+
             const href = link.getAttribute('href') || '';
-            if (!href.match(/\/imone\/[^/]+\/$/)) continue;
-
-            const name = link.textContent?.trim() || '';
+            const name = (link.getAttribute('title') || link.textContent).trim();
             if (!name || name.length < 2) continue;
-            if (name.includes('»') || name.toLowerCase().includes('kontakt')) continue;
 
-            const container = link.closest('li, tr, div.company, div.col, article') || link.parentElement?.parentElement;
-            const allText = container?.textContent || '';
-            const codeMatch = allText.match(/\b(\d{7,9})\b/);
-            const code = codeMatch ? codeMatch[1] : '';
             const fullUrl = href.startsWith('http') ? href : `${location.origin}${href}`;
 
             result.push({
               name: name.substring(0, 255),
-              company_code: code,
               rekvizitai_url: fullUrl
             });
           }
@@ -165,10 +160,10 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
         for (const company of companies) {
           try {
             const res = await db.query(
-              `INSERT INTO companies (niche_id, name, company_code, rekvizitai_url, status, created_at)
-               VALUES ($1, $2, $3, $4, 'raw', NOW())
+              `INSERT INTO companies (niche_id, name, rekvizitai_url, status, created_at)
+               VALUES ($1, $2, $3, 'raw', NOW())
                ON CONFLICT (rekvizitai_url) WHERE rekvizitai_url IS NOT NULL DO NOTHING`,
-              [nicheId, company.name, company.company_code || null, company.rekvizitai_url]
+              [nicheId, company.name, company.rekvizitai_url]
             );
             if (res.rowCount > 0) {
               companiesNew++;
