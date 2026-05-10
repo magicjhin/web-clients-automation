@@ -147,17 +147,26 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
         } catch (_) {}
 
         if (!appeared) {
-          // Сайт заблокировал — перезапускаем браузер с новым User-Agent, ждём 30 сек
-          await log.warn(`Страница ${pageNum}: блокировка, перезапуск браузера (UA #${uaIndex})`);
-          await new Promise(r => setTimeout(r, 30000));
+          // Сайт заблокировал — ждём 3 минуты, перезапускаем браузер с новым User-Agent
+          await log.warn(`Страница ${pageNum}: блокировка, ждём 3 мин и меняем UA (#${uaIndex})`);
+          await new Promise(r => setTimeout(r, 180000));
           page = await launchBrowser();
           const url = `${BASE_URL}/imones/${categoryKey}/${pageNum}/`;
           await page.goto(url, { waitUntil: 'networkidle2' });
           try {
             await page.waitForSelector('div.company', { timeout: 20000 });
           } catch (e) {
-            await log.warn(`Страница ${pageNum}: повторная блокировка, пропускаем`);
-            continue;
+            // Ещё раз ждём 3 минуты и пробуем последний раз
+            await log.warn(`Страница ${pageNum}: снова блокировка, ждём ещё 3 мин`);
+            await new Promise(r => setTimeout(r, 180000));
+            page = await launchBrowser();
+            await page.goto(url, { waitUntil: 'networkidle2' });
+            try {
+              await page.waitForSelector('div.company', { timeout: 20000 });
+            } catch (e2) {
+              await log.warn(`Страница ${pageNum}: блокировка после 3 попыток, пропускаем`);
+              continue;
+            }
           }
         }
 
