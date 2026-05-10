@@ -79,7 +79,7 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
     const firstUrl = `${BASE_URL}/imones/${categoryKey}/1/`;
     await page.goto(firstUrl, { waitUntil: 'networkidle2' });
     try {
-      await page.waitForSelector('div.list-item, div.company.highlighted', { timeout: 15000 });
+      await page.waitForSelector('div.company', { timeout: 15000 });
     } catch (e) {
       await log.warn(`Карточки компаний не появились на первой странице: ${e.message}`);
     }
@@ -122,7 +122,7 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
           await page.goto(url, { waitUntil: 'networkidle2' });
         }
         try {
-          await page.waitForSelector('div.list-item, div.company.highlighted', { timeout: 15000 });
+          await page.waitForSelector('div.company', { timeout: 15000 });
         } catch (e) {
           await log.warn(`Страница ${pageNum}: карточки не появились, пропускаем`);
           continue;
@@ -130,7 +130,7 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
 
         const rawCompanies = await page.evaluate(() => {
           const result = [];
-          const items = Array.from(document.querySelectorAll('div.list-item, div.company.highlighted'));
+          const items = Array.from(document.querySelectorAll('div.company'));
 
           for (const item of items) {
             const link = item.querySelector('a.company-title');
