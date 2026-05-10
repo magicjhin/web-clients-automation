@@ -134,8 +134,8 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
     for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
       try {
         if (pageNum > 1) {
-          // Случайная задержка 2-4 сек между страницами
-          const delay = 2000 + Math.floor(Math.random() * 2000);
+          // Случайная задержка 30-60 сек между страницами (защита от IP-бана)
+          const delay = 30000 + Math.floor(Math.random() * 30000);
           await new Promise(r => setTimeout(r, delay));
           const url = `${BASE_URL}/imones/${categoryKey}/${pageNum}/`;
           await page.goto(url, { waitUntil: 'networkidle2' });

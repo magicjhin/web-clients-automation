@@ -3,15 +3,25 @@
 // КАК ИСПОЛЬЗОВАТЬ: const cron = require('./cron'); cron.start()
 
 const cron = require('node-cron');
-const { execFile } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const { sendMessage } = require('./telegram');
 const config = require('../shared/config');
 const log = require('../shared/logger')('cron');
 
 const SCRIPTS_DIR = path.join(__dirname, '..');
 
+async function notify(text) {
+  try {
+    await sendMessage(config.telegram.chatId, text);
+  } catch (err) {
+    console.error('[cron] Telegram notify failed:', err.message);
+  }
+}
+
+// Запускает execFile-скрипты с таймаутом (только для быстрых задач)
 function runScript(scriptPath, args = []) {
+  const { execFile } = require('child_process');
   return new Promise((resolve) => {
     const fullPath = path.join(SCRIPTS_DIR, scriptPath);
     execFile('node', [fullPath, ...args], { timeout: 300000 }, (error, stdout, stderr) => {
@@ -24,36 +34,46 @@ function runScript(scriptPath, args = []) {
   });
 }
 
-async function notify(text) {
-  try {
-    await sendMessage(config.telegram.chatId, text);
-  } catch (err) {
-    console.error('[cron] Telegram notify failed:', err.message);
-  }
-}
-
 async function runParser() {
   if (global.systemPaused) return;
-  await log.info( 'Cron: запуск автопарсинга');
-  const result = await runScript('parser/index.js', ['--auto']);
-  const output = (result.stdout || '').trim();
-  if (output) {
-    await notify(`🕘 *Автопарсинг (09:00)*\n\`\`\`\n${output.slice(0, 2000)}\n\`\`\``);
+
+  // Парсер вызывается напрямую (не через execFile) — он может работать часами
+  const parser = require('../parser/index');
+  const { getParseState } = parser;
+
+  // Не запускать если уже идёт парсинг
+  const state = getParseState();
+  if (state.active) {
+    await log.info('Cron parser: парсинг уже запущен, пропуск');
+    return;
   }
-  if (result.error && !result.stdout) {
-    await notify(`❌ Ошибка автопарсинга: ${result.error.slice(0, 500)}`);
+
+  await log.info('Cron: запуск автопарсинга (00:00)');
+  await notify('🌙 *Ночной автопарсинг запущен* (00:00)');
+
+  try {
+    const result = await parser.parseAuto();
+    if (result.success) {
+      await notify(`✅ *Автопарсинг завершён*\n${result.message}`);
+    } else if (result.error) {
+      await notify(`❌ *Ошибка автопарсинга:* ${result.error}`);
+    } else if (result.message) {
+      await notify(`ℹ️ *Автопарсинг:* ${result.message}`);
+    }
+  } catch (err) {
+    await log.error(`Cron parser error: ${err.message}`);
+    await notify(`❌ *Критическая ошибка автопарсинга:* ${err.message}`);
   }
 }
 
 async function runFilter() {
   if (global.systemPaused) return;
   const scriptPath = path.join(SCRIPTS_DIR, 'filter/index.js');
-  const fs = require('fs');
   if (!fs.existsSync(scriptPath)) {
-    await log.info( 'Cron filter: скрипт не реализован, пропуск');
+    await log.info('Cron filter: скрипт не реализован, пропуск');
     return;
   }
-  await log.info( 'Cron: запуск фильтрации');
+  await log.info('Cron: запуск фильтрации');
   const result = await runScript('filter/index.js', ['--batch=10']);
   const output = (result.stdout || '').trim();
   if (output) {
@@ -67,12 +87,11 @@ async function runFilter() {
 async function runAudit() {
   if (global.systemPaused) return;
   const scriptPath = path.join(SCRIPTS_DIR, 'audit/index.js');
-  const fs = require('fs');
   if (!fs.existsSync(scriptPath)) {
-    await log.info( 'Cron audit: скрипт не реализован, пропуск');
+    await log.info('Cron audit: скрипт не реализован, пропуск');
     return;
   }
-  await log.info( 'Cron: запуск аудита');
+  await log.info('Cron: запуск аудита');
   const result = await runScript('audit/index.js', ['--batch=5']);
   const output = (result.stdout || '').trim();
   if (output) {
@@ -86,25 +105,23 @@ async function runAudit() {
 async function runFollowup() {
   if (global.systemPaused) return;
   const scriptPath = path.join(SCRIPTS_DIR, 'email/followup.js');
-  const fs = require('fs');
   if (!fs.existsSync(scriptPath)) {
-    await log.info( 'Cron followup: скрипт не реализован, пропуск');
+    await log.info('Cron followup: скрипт не реализован, пропуск');
     return;
   }
-  await log.info( 'Cron: запуск followup писем');
+  await log.info('Cron: запуск followup писем');
   const result = await runScript('email/followup.js', []);
   const output = (result.stdout || '').trim();
   if (output) {
-    await notify(`📧 *Follow-up письма (10:00)*\n\`\`\`\n${output.slice(0, 2000)}\n\`\`\``);
+    await notify(`📧 *Follow-up письма*\n\`\`\`\n${output.slice(0, 2000)}\n\`\`\``);
   }
 }
 
 async function runImap() {
   if (global.systemPaused) return;
   const scriptPath = path.join(SCRIPTS_DIR, 'email/imap.js');
-  const fs = require('fs');
   if (!fs.existsSync(scriptPath)) {
-    return; // тихий пропуск — слишком частый cron
+    return;
   }
   const result = await runScript('email/imap.js', []);
   if (result.error && !result.stdout) {
@@ -113,8 +130,8 @@ async function runImap() {
 }
 
 function start() {
-  // Ежедневно в 09:00 — автопарсинг
-  cron.schedule('0 9 * * *', runParser, { timezone: 'Europe/Vilnius' });
+  // Ежедневно в 00:00 — автопарсинг (ночью, меньше нагрузки на сайт)
+  cron.schedule('0 0 * * *', runParser, { timezone: 'Europe/Vilnius' });
 
   // Каждые 30 минут — фильтрация
   cron.schedule('*/30 * * * *', runFilter);
