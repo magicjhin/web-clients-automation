@@ -468,6 +468,34 @@ async function cmdResume(chatId) {
   }
 }
 
+function deleteMessage(chatId, messageId) {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({ chat_id: chatId, message_id: messageId });
+    const options = {
+      hostname: 'api.telegram.org',
+      path: `/bot${config.telegram.token}/deleteMessage`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    };
+    const req = https.request(options, (res) => {
+      res.on('data', () => {});
+      res.on('end', () => resolve());
+    });
+    req.on('error', () => resolve());
+    req.write(body);
+    req.end();
+  });
+}
+
+async function cmdClear(chatId, messageId) {
+  // Удаляем последние 100 сообщений (Telegram хранит ID последовательно)
+  const tasks = [];
+  for (let i = 0; i <= 100; i++) {
+    tasks.push(deleteMessage(chatId, messageId - i));
+  }
+  await Promise.all(tasks);
+}
+
 async function cmdHelp(chatId) {
   const text = `🤖 *Leadgen Bot — Команды*
 
@@ -494,7 +522,8 @@ async function cmdHelp(chatId) {
 
 ⚙️ *Система*
 /pause — поставить на паузу
-/resume — возобновить`;
+/resume — возобновить
+/clear — очистить чат`;
 
   await sendMessage(chatId, text);
 }
@@ -503,6 +532,7 @@ async function handleUpdate(update) {
   if (!update.message || !update.message.text) return;
 
   const chatId = update.message.chat.id;
+  const messageId = update.message.message_id;
   const text = update.message.text.trim();
   const [rawCmd, ...argParts] = text.split(/\s+/);
   const cmd = rawCmd.split('@')[0].toLowerCase();
@@ -542,6 +572,8 @@ async function handleUpdate(update) {
       return cmdPause(chatId);
     case '/resume':
       return cmdResume(chatId);
+    case '/clear':
+      return cmdClear(chatId, messageId);
     default:
       await sendMessage(chatId, `❓ Неизвестная команда: ${cmd}\n\nИспользуй /help`);
   }
