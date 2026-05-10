@@ -78,33 +78,34 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
     // Загружаем первую страницу чтобы узнать сколько страниц всего
     const firstUrl = `${BASE_URL}/imones/${categoryKey}/1/`;
     await page.goto(firstUrl, { waitUntil: 'networkidle2' });
-    await new Promise(r => setTimeout(r, 2000));
+    try {
+      await page.waitForSelector('div.list-item', { timeout: 15000 });
+    } catch (e) {
+      await log.warn(`div.list-item не появился на первой странице: ${e.message}`);
+    }
 
     await log.info(`Финальный URL: ${page.url()}`);
 
-    // Определяем количество страниц
-    let totalPages = nicheData.total_pages || 1;
-    if (!nicheData.total_pages) {
-      try {
-        totalPages = await page.evaluate(() => {
-          const pagLinks = Array.from(document.querySelectorAll('.pagination a, [class*="pag"] a'));
-          let maxPage = 1;
-          for (const link of pagLinks) {
-            const num = parseInt(link.textContent.trim());
-            if (!isNaN(num) && num > maxPage) maxPage = num;
-            const href = link.getAttribute('href') || '';
-            const match = href.match(/\/(\d+)\/$/);
-            if (match) {
-              const n = parseInt(match[1]);
-              if (n > maxPage) maxPage = n;
-            }
+    // Определяем количество страниц (всегда пересчитываем)
+    let totalPages = 1;
+    try {
+      totalPages = await page.evaluate(() => {
+        // Ищем последнюю страницу в пагинации по href вида /imones/xxx/N/
+        const pagLinks = Array.from(document.querySelectorAll('a[href*="/imones/"]'));
+        let maxPage = 1;
+        for (const link of pagLinks) {
+          const href = link.getAttribute('href') || '';
+          const match = href.match(/\/imones\/[^/]+\/(\d+)\//);
+          if (match) {
+            const n = parseInt(match[1]);
+            if (n > maxPage) maxPage = n;
           }
-          return maxPage;
-        });
-        await db.query('UPDATE niches SET total_pages = $1 WHERE id = $2', [totalPages, nicheId]);
-      } catch (e) {
-        await log.warn(`Не удалось определить количество страниц: ${e.message}`);
-      }
+        }
+        return maxPage;
+      });
+      await db.query('UPDATE niches SET total_pages = $1 WHERE id = $2', [totalPages, nicheId]);
+    } catch (e) {
+      await log.warn(`Не удалось определить количество страниц: ${e.message}`);
     }
 
     parseState.totalPages = totalPages;
@@ -119,7 +120,12 @@ async function scrapeNiche(categoryKey, nicheId, nicheName = '') {
         if (pageNum > 1) {
           const url = `${BASE_URL}/imones/${categoryKey}/${pageNum}/`;
           await page.goto(url, { waitUntil: 'networkidle2' });
-          await new Promise(r => setTimeout(r, 1500));
+        }
+        try {
+          await page.waitForSelector('div.list-item', { timeout: 15000 });
+        } catch (e) {
+          await log.warn(`Страница ${pageNum}: div.list-item не появился, пропускаем`);
+          continue;
         }
 
         const rawCompanies = await page.evaluate(() => {
