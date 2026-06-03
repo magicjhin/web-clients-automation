@@ -21,6 +21,6 @@ jobs:
             cd /opt/leadgen
             rm -rf package-lock.json
             git pull origin main
-            docker-compose up -d --remove-orphans
-            docker-compose restart node
-            docker-compose ps
+            # Пересоздать ТОЛЬКО node (без пересборки). --no-deps не трогает postgres.
+            docker compose up -d --no-deps node
+            docker compose ps
