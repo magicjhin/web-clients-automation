@@ -36,8 +36,12 @@
 ✅ `db/niches_seed.sql` - seed 50 ниш (устарел, теперь используется /discover)  
 ✅ Парсинг протестирован: ниша Akmens gaminiai (34 стр), 300 компаний записано  
 ✅ Дедупликация по `rekvizitai_url` (ON CONFLICT DO NOTHING)  
-✅ Задержка между страницами увеличена до 30-60 сек (защита от IP-бана)  
-🔄 IP-блокировка на стр. 21+ — тестируем решение с 30-60 сек задержкой (запуск сегодня ночью в 00:00)
+✅ Исправлен баг «потолок ~20 страниц»: убран расчёт totalPages по пагинации, идём инкрементально до конца (2 пустые страницы подряд)  
+✅ Задержка между страницами возвращена к 8-15 сек (30-60 сек был костыль от мнимого IP-бана)  
+✅ Разобрана «IP-блокировка стр.21+»: это НЕ бан, а намеренная капча-защита глубоких страниц. Из датацентр-IP капча бесполезна — сайт редиректит на стр.1 при ЛЮБОМ коде (проверено: неверный ZZZ == верный код; cookie/тайминг/стелс не влияют). Детали — memory `rekvizitai-deep-page-block`  
+✅ Капча-решалка реализована (Telegram `/code` + OCR-задел `shared/ocr.js`, мост `shared/captcha.js`) — пригодится для глубокого добора через резидентный прокси  
+✅ Стратегия принята — «ширина»: берём бесплатные ~20 стр/нишу (~300 фирм), на капче ниша завершается (`stoppedReason='capped'`, `CAPTCHA_MODE=skip` по умолчанию) и переходим к следующей. Глубокий добор стр.21+ — позже, через резидентный LT-прокси и только по нишам-победителям (по реальным цифрам фильтра)  
+✅ Инфра: миграция на Docker Compose **v2** (плагин), лимиты node `pids_limit=16384`/`shm_size=1gb` (фикс Puppeteer `pthread_create`), `deploy.yml` → `docker compose up -d --no-deps node` (postgres не трогается). Коммиты `b4edc84`, `a431642` (запушены)
 
 ## День 5 - Фильтр часть 1
 📋 `scripts/filter/pagespeed.js` - PageSpeed API  
@@ -70,7 +74,7 @@
 
 ## День 10 - Telegram бот
 ✅ `scripts/bot/index.js` - Express сервер + setWebhook + запуск cron  
-✅ `scripts/bot/telegram.js` - все команды: /status, /niches, /parse, /parse_status, /reset_niche, /discover, /discover_status, /filter, /run, /pause, /resume, /history, /logs, /calls, /help  
+✅ `scripts/bot/telegram.js` - все команды: /status, /niches, /parse, /parse_status, **/parse_all** (все ниши подряд), /reset_niche, /discover, /discover_status, /filter, /run, /pause, /resume, /history, /logs, /calls, /help, **/code** (ввод капчи), `sendPhoto`  
 ✅ `scripts/bot/cron.js` - автопарсинг перенесён на 00:00, вызов напрямую (не через execFile)  
 ✅ Все команды работают на VPS
 

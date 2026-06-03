@@ -8,9 +8,19 @@ const config = require('../shared/config');
 const log = require('../shared/logger')('bot');
 const telegram = require('./telegram');
 const cron = require('./cron');
+const captcha = require('../shared/captcha');
 
 const app = express();
 app.use(express.json());
+
+// Парсер при капче запрашивает код у человека через этот канал:
+// шлём картинку капчи в Telegram, пользователь отвечает /code <код>.
+captcha.setNotifier(async (imageBuffer, meta) => {
+  const caption =
+    `🔐 Капча на нише *${meta.nicheName || meta.categoryKey || ''}*, страница *${meta.page}* (попытка ${meta.attempt}).\n` +
+    `Введи код с картинки: \`/code КОД\``;
+  await telegram.sendPhoto(config.telegram.chatId, imageBuffer, caption);
+});
 
 global.systemPaused = false;
 

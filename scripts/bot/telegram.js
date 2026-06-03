@@ -31,6 +31,38 @@ function sendMessage(chatId, text, parseMode = 'Markdown') {
   });
 }
 
+// Отправка картинки (multipart/form-data) — для капчи
+function sendPhoto(chatId, imageBuffer, caption = '', parseMode = 'Markdown') {
+  return new Promise((resolve, reject) => {
+    const boundary = '----LeadgenBoundary' + Date.now().toString(16);
+    const parts = [];
+    const pushField = (name, value) => {
+      parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
+    };
+    pushField('chat_id', String(chatId));
+    if (caption) { pushField('caption', caption); pushField('parse_mode', parseMode); }
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="captcha.png"\r\nContent-Type: image/png\r\n\r\n`));
+    parts.push(imageBuffer);
+    parts.push(Buffer.from(`\r\n--${boundary}--\r\n`));
+    const body = Buffer.concat(parts);
+
+    const options = {
+      hostname: 'api.telegram.org',
+      path: `/bot${config.telegram.token}/sendPhoto`,
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length },
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch (_) { resolve({ ok: false, raw: data }); } });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 function runScript(scriptPath, args = []) {
   return new Promise((resolve) => {
     const fullPath = path.join(SCRIPTS_DIR, scriptPath);
@@ -162,11 +194,13 @@ async function cmdParse(chatId, arg) {
       await sendMessage(chatId, `❌ ${result.error}`);
       return;
     }
+    const paused = result.stoppedReason === 'captcha';
     await sendMessage(chatId,
-      `✅ *Парсинг завершён!*\n\n` +
+      `${paused ? '⏸ *Парсинг приостановлен (капча)*' : '✅ *Парсинг завершён!*'}\n\n` +
       `📁 Ниша: *${result.niche || niche.name}*\n` +
       `🏢 Найдено компаний: *${result.companiesFound || 0}*\n` +
-      `🆕 Новых в БД: *${result.companiesNew || 0}*`
+      `🆕 Новых в БД: *${result.companiesNew || 0}*` +
+      (paused ? `\n\n_Код капчи не получен. Прогресс сохранён — продолжить с той же страницы: /parse ${niche.id}_` : '')
     );
   } catch (err) {
     await sendMessage(chatId, `❌ Ошибка парсинга: ${err.message.slice(0, 500)}`);
@@ -347,9 +381,45 @@ async function cmdDiscoverStatus(chatId) {
   );
 }
 
+async function cmdParseAll(chatId) {
+  const parser = require('../parser/index');
+  const result = await parser.parseAll(async (summary) => {
+    await sendMessage(chatId,
+      `🏁 *Парсинг всех ниш завершён*\n\n` +
+      `Обработано ниш: *${summary.done}/${summary.total}*\n` +
+      `Новых компаний: *${summary.companiesNew}*`
+    );
+  });
+  if (result.error) {
+    await sendMessage(chatId, `❌ ${result.error}`);
+    return;
+  }
+  await sendMessage(chatId,
+    `🚀 *Запущен парсинг ВСЕХ ниш*\n\n` +
+    `В очереди: *${result.total}* ниш\n` +
+    `Между нишами пауза 1-2 мин — процесс надолго (может идти весь день).\n\n` +
+    `📊 Прогресс: /parse\\_status\n⏸ Остановить: /pause`
+  );
+}
+
 async function cmdParseStatus(chatId) {
   const parser = require('../parser/index');
   const state = parser.getParseState();
+
+  const allState = parser.getParseAllState();
+  if (allState.active) {
+    const el = Math.round((Date.now() - new Date(allState.startedAt)) / 60000);
+    let t = `🔁 *Парсинг ВСЕХ ниш*\n\n` +
+      `Прогресс: *${allState.done}/${allState.total}* ниш\n` +
+      `Текущая: *${allState.currentName || '...'}*\n` +
+      `🆕 Новых компаний: *${allState.companiesNew}*\n` +
+      `⏱ Идёт: ${el} мин\n\n_Остановить: /pause_`;
+    if (state.active) {
+      t += `\n\n📄 Текущая ниша: стр *${state.currentPage}*, найдено ${state.companiesFound}`;
+    }
+    await sendMessage(chatId, t);
+    return;
+  }
 
   if (!state.active) {
     try {
@@ -398,7 +468,7 @@ async function cmdParseStatus(chatId) {
 📊 Прогресс: ${bar} ${pct}%
 🏢 Найдено: *${state.companiesFound}* (новых: *${state.companiesNew}*)
 ⏱ Время: ${mins}м ${secs}с
-📌 Осталось страниц: ~${pagesLeft}`;
+📌 Осталось страниц: ~${pagesLeft}${state.waitingCaptcha ? '\n\n🔐 *Ожидаю код капчи* — пришли `/code КОД`' : ''}`;
 
   await sendMessage(chatId, text);
 }
@@ -505,6 +575,8 @@ async function cmdHelp(chatId) {
 /discover\\_status — прогресс поиска ниш
 /parse 1 — парсить нишу по ID
 /parse Стоматологи — парсить по названию
+/parse\_all — парсить ВСЕ ниши подряд (надолго)
+/code ABC — ввести код капчи (когда бот попросит)
 
 📊 *Информация*
 /status — статистика БД
@@ -526,6 +598,23 @@ async function cmdHelp(chatId) {
 /clear — очистить чат`;
 
   await sendMessage(chatId, text);
+}
+
+async function cmdCode(chatId, arg) {
+  const captcha = require('../shared/captcha');
+  const code = (arg || '').trim();
+  if (!code) {
+    await sendMessage(chatId, '📋 Использование: `/code ABC` — ввести код с картинки капчи');
+    return;
+  }
+  if (!captcha.isPending()) {
+    await sendMessage(chatId, 'ℹ️ Сейчас код капчи не требуется.');
+    return;
+  }
+  const ok = captcha.submit(code);
+  await sendMessage(chatId, ok
+    ? `✅ Код принят: \`${code}\` — продолжаю парсинг.`
+    : 'ℹ️ Сейчас код капчи не требуется.');
 }
 
 async function handleUpdate(update) {
@@ -552,6 +641,10 @@ async function handleUpdate(update) {
       return cmdParse(chatId, arg);
     case '/parse_status':
       return cmdParseStatus(chatId);
+    case '/parse_all':
+      return cmdParseAll(chatId);
+    case '/code':
+      return cmdCode(chatId, arg);
     case '/reset_niche':
       return cmdResetNiche(chatId, arg);
     case '/discover':
@@ -579,4 +672,4 @@ async function handleUpdate(update) {
   }
 }
 
-module.exports = { handleUpdate, sendMessage };
+module.exports = { handleUpdate, sendMessage, sendPhoto };

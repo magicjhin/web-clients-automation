@@ -89,6 +89,10 @@ async function parseNiche(nicheId) {
       return { error: `Ниша "${niche.name}" уже парсится` };
     }
 
+    if (scraper.getParseState().active) {
+      return { error: 'Парсинг уже выполняется — дождись завершения (/parse_status)' };
+    }
+
     // Обновляю статус на 'parsing'
     await updateNicheStatus(nicheId, 'parsing');
     await log.info(`Запуск парсинга нише: ${niche.name} (search_term: ${niche.search_term})`);
@@ -96,15 +100,18 @@ async function parseNiche(nicheId) {
     // Запускаю scraper
     const result = await scraper.scrapeNiche(niche.search_term, nicheId, niche.name);
 
-    // Обновляю статус на 'completed'
-    await updateNicheStatus(nicheId, 'completed');
-    await log.info(`Завершен парсинг нише: ${niche.name}. Найдено: ${result.companiesFound}`);
+    // Если остановились на капче — ниша 'paused' (можно продолжить /parse),
+    // иначе 'completed'
+    const finalStatus = result.stoppedReason === 'captcha' ? 'paused' : 'completed';
+    await updateNicheStatus(nicheId, finalStatus);
+    await log.info(`Парсинг нише ${niche.name}: статус ${finalStatus}. Найдено: ${result.companiesFound}`);
 
     return {
       success: true,
       niche: niche.name,
       companiesFound: result.companiesFound,
-      companiesNew: result.companiesNew
+      companiesNew: result.companiesNew,
+      stoppedReason: result.stoppedReason || null
     };
   } catch (error) {
     await log.error(`Ошибка при парсинге нише #${nicheId}: ${error.message}`);
@@ -113,8 +120,94 @@ async function parseNiche(nicheId) {
   }
 }
 
+// Состояние массового парсинга всех ниш
+const parseAllState = {
+  active: false,
+  total: 0,
+  done: 0,
+  currentId: null,
+  currentName: null,
+  startedAt: null,
+  companiesNew: 0,
+  companiesFound: 0,
+};
+
+function getParseAllState() {
+  return { ...parseAllState };
+}
+
+function stopParseAll() {
+  if (!parseAllState.active) return false;
+  parseAllState.active = false; // цикл прервётся после текущей ниши
+  return true;
+}
+
+// Парсинг ВСЕХ pending-ниш подряд (в фоне). Пауза 1-2 мин между нишами.
+// onDone(summary) вызывается по завершении (например, уведомить в Telegram).
+async function parseAll(onDone) {
+  if (parseAllState.active) {
+    return { error: 'Парсинг всех ниш уже запущен. Прогресс: /parse_status' };
+  }
+  if (scraper.getParseState().active) {
+    return { error: 'Сейчас идёт парсинг ниши — дождись завершения.' };
+  }
+
+  const niches = await db.many(
+    `SELECT id, name FROM niches WHERE status = 'pending' ORDER BY ai_rank ASC NULLS LAST, id ASC`,
+    []
+  );
+  if (niches.length === 0) {
+    return { error: 'Нет ниш со статусом pending для парсинга' };
+  }
+
+  parseAllState.active = true;
+  parseAllState.total = niches.length;
+  parseAllState.done = 0;
+  parseAllState.currentId = null;
+  parseAllState.currentName = null;
+  parseAllState.startedAt = new Date();
+  parseAllState.companiesNew = 0;
+  parseAllState.companiesFound = 0;
+
+  // Фоновый цикл — не await, чтобы вызвавший (webhook) ответил сразу
+  (async () => {
+    await log.info(`parseAll: старт, ниш в очереди: ${niches.length}`);
+    for (const n of niches) {
+      if (!parseAllState.active || global.systemPaused) {
+        await log.info('parseAll: остановлено (pause/stop)');
+        break;
+      }
+      parseAllState.currentId = n.id;
+      parseAllState.currentName = n.name;
+      try {
+        const res = await parseNiche(n.id);
+        if (res && res.companiesNew) parseAllState.companiesNew += res.companiesNew;
+        if (res && res.companiesFound) parseAllState.companiesFound += res.companiesFound;
+      } catch (e) {
+        await log.error(`parseAll: ниша #${n.id} (${n.name}) упала: ${e.message}`);
+      }
+      parseAllState.done++;
+      // пауза 60-120с между нишами (кроме последней)
+      if (parseAllState.active && !global.systemPaused && parseAllState.done < parseAllState.total) {
+        await new Promise(r => setTimeout(r, 60000 + Math.floor(Math.random() * 60000)));
+      }
+    }
+    const summary = getParseAllState();
+    parseAllState.active = false;
+    parseAllState.currentId = null;
+    parseAllState.currentName = null;
+    await log.info(`parseAll: завершено. Обработано ${summary.done}/${summary.total}, новых компаний: ${summary.companiesNew}`);
+    if (onDone) { try { await onDone(summary); } catch (_) {} }
+  })();
+
+  return { started: true, total: niches.length };
+}
+
 async function parseAuto() {
   try {
+    if (parseAllState.active) {
+      return { message: 'Идёт парсинг всех ниш (/parse_all), автопарсинг пропущен' };
+    }
     const qualifiedCount = await countQualifiedInQueue();
 
     if (qualifiedCount >= 100) {
@@ -165,11 +258,16 @@ async function main() {
   } else if (autoCmd) {
     const result = await parseAuto();
     console.log(JSON.stringify(result, null, 2));
+  } else if (args.includes('--all')) {
+    const result = await parseAll();
+    console.log(JSON.stringify(result, null, 2));
+    // фоновый цикл продолжит работу, процесс завершится сам по окончании
   } else {
     console.log('Usage:');
     console.log('  node scripts/parser/index.js --list                 # список ниш');
     console.log('  node scripts/parser/index.js --niche=1              # парсить нишу #1');
     console.log('  node scripts/parser/index.js --auto                 # автопарсинг');
+    console.log('  node scripts/parser/index.js --all                  # парсить все pending-ниши подряд');
     process.exit(0);
   }
 }
@@ -181,4 +279,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { listNiches, parseNiche, parseAuto, getNicheById, getNicheByName, getParseState: scraper.getParseState };
+module.exports = { listNiches, parseNiche, parseAuto, parseAll, getParseAllState, stopParseAll, getNicheById, getNicheByName, getParseState: scraper.getParseState };
