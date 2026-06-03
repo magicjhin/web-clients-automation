@@ -22,6 +22,13 @@ services:
     build: .
     container_name: leadgen_node
     restart: unless-stopped
+    pids_limit: 16384
+    shm_size: '1gb'
+    ulimits:
+      nproc: 16384
+      nofile:
+        soft: 65536
+        hard: 65536
     working_dir: /app
     volumes:
       - ./scripts:/app/scripts
