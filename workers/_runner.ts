@@ -16,7 +16,8 @@
 
 export interface RunnerArgs {
   niche: string | null;
-  limit: number;
+  /** null = лимит не задан (полный прогон). Число — только если пользователь явно передал --limit. */
+  limit: number | null;
   batch: number;
   dryRun: boolean;
 }
@@ -24,7 +25,7 @@ export interface RunnerArgs {
 export function parseArgs(argv: string[] = process.argv.slice(2)): RunnerArgs {
   const args: RunnerArgs = {
     niche: null,
-    limit: 100,
+    limit: null, // по умолчанию без лимита (rc-sync = полный снимок); воркер сам решает дефолт, если нужен
     batch: 50,
     dryRun: false,
   };

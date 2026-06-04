@@ -9,6 +9,10 @@
  * Запуск migrate: npm run db:migrate (dev) | npm run db:deploy (prod/CI).
  */
 
+// Грузим .env ДО создания PrismaClient — иначе при локальном запуске воркеров
+// (npm run worker:*) DATABASE_URL из .env не попадёт в окружение и Prisma упадёт на старте.
+// В Next.js env уже загружен своим механизмом — dotenv тут безвреден (no-op).
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {

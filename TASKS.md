@@ -8,7 +8,7 @@
 - ✅ **1. Инициализация проекта** (devops) — Next.js (App Router, TS), Prisma, Postgres, Docker Compose, CI/CD. Прошло Codex-гейт (3 прохода).
 - ✅ **2. Схема БД (мультитенант)** (db-schema) — 8 моделей, 11 enum, init-миграция. `subscriber_id` везде, индексы. Прошло Codex-гейт.
 - 📋 **3. Auth + форма реквизитов** (frontend-dev) — мой аккаунт, 2FA (email-код)/Google OAuth, обязательная форма реквизитов при регистрации (форма работы, реквизиты → профиль подписчика)
-- 📋 **4. `rc-sync`** (backend-pipeline) — забор классификатора EVRK (карта UUID→kodas) + всех `veikiantis=1` по курсору, upsert в companies. См. `docs/API_RC.md`.
+- ✅ **4. `rc-sync`** (backend-pipeline) — забор классификатора EVRK (карта UUID→kodas) + всех `veikiantis=1` по курсору, upsert в companies. Проверен на живом API (dry-run), прошёл Codex-гейт (3 прохода). См. `docs/API_RC.md`.
 - 📋 **5. `enrich`** (backend-pipeline) — 1 Places-запрос + confidence-scoring + HTML-верификация + PageSpeed, жёсткий стоп 5000/мес, без доп. Places как fallback
 - 📋 **6. Дашборд + очередь review** (frontend-dev + designer) — список лидов, карточка с аудитом, статистика, отдельно `needs_review` (medium/ambiguous)
 - 📋 **7. `audit-gen`** (backend-pipeline) — шаблонный вариант (PageSpeed → формулировки), быстро для демо
