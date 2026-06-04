@@ -1,0 +1,27 @@
+# Секреты — НИКОГДА не попадают в build context / слои образа (правило безопасности, инцидент BSI)
+.env
+.env.*
+!.env.example
+
+# Зависимости и сборка — ставятся/собираются внутри образа
+node_modules
+.next
+dist
+*.tsbuildinfo
+
+# Git и CI
+.git
+.github
+.gitignore
+
+# Локальное / мусор
+*.log
+.DS_Store
+.vscode
+.idea
+
+# Документация и агентские файлы — не нужны в рантайме
+docs
+.claude
+*.md
+scripts/codex-review.sh

@@ -1,208 +1,60 @@
-# Deploy — VPS, Docker, GitHub Actions
+# Деплой и инфраструктура — Leadgen LT
 
-## VPS информация
-- IP: 178.104.253.76
-- Провайдер: Hetzner CX23
-- ОС: Ubuntu
-- SSH: `ssh root@178.104.253.76`
-- Папка проекта на VPS: `/opt/leadgen`
+## Топология
+- **VPS** (Hetzner): Docker Compose — Postgres + воркеры (node-cron). Redis добавляется в фазе 2.
+- **Frontend** (Next.js): Vercel ИЛИ в Docker на VPS. Решается на старте (открытый вопрос техспек §8).
+  - Вариант A: фронт на Vercel, воркеры+БД на VPS (БД доступна фронту через защищённое соединение).
+  - Вариант B: всё в Docker на VPS (один хост).
+- **RAM**: 4ГБ достаточно (нет Puppeteer). Апгрейд по факту.
 
----
+## Секреты
+- `.env` — НЕ в git (`.gitignore`). `.env.example` — в git, без значений.
+- Все секреты читаются через `src/lib/config`.
+- Нужные ключи: `DATABASE_URL`, `GOOGLE_PLACES_API_KEY`, `PAGESPEED_API_KEY`,
+  `RESEND_API_KEY` (мой домen webvibe.lt на фазе 1), `OPENAI_API_KEY` (GPT-4o),
+  `ANTHROPIC_API_KEY` (опц. Claude), `AUTH_SECRET`, `GOOGLE_OAUTH_*`, `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`.
 
-## Первоначальная настройка VPS (один раз)
+## CI/CD (настроено ✅)
+- `.github/workflows/deploy.yml`: push в `main` → `appleboy/ssh-action` → SSH на VPS →
+  `git reset --hard origin/main` → `docker compose up -d --build` → `prisma migrate deploy`.
+- Секреты репозитория уже заведены: `VPS_HOST`, `VPS_USER`, `VPS_PASSWORD`, `VPS_PORT` (+ `VPS_SSH_KEY`).
+- Путь на сервере: `/opt/leadgen`. Активируется, как только в main появятся `docker-compose.yml` + `Dockerfile`.
+- ⚠️ Имена сервисов в compose должны совпадать с workflow (`web` для Next.js/Prisma). Devops-агент синхронизирует.
 
-```bash
-# Подключиться
-ssh root@178.104.253.76
-
-# Установить Docker
-apt update && apt install -y docker.io docker-compose git
-
-# Склонировать репо
-git clone https://github.com/magicjhin/web-clients-automation.git /opt/leadgen
-cd /opt/leadgen
-
-# Загрузить .env (с локальной машины)
-# Выполнить с локального компьютера:
-scp .env root@178.104.253.76:/opt/leadgen/.env
-
-# Запустить сервисы
-docker-compose up -d postgres n8n
-
-# Проверить
-docker ps
+## Docker Compose (целевой состав)
 ```
-
----
-
-## GitHub Actions — Автодеплой
-
-Файл: `.github/workflows/deploy.yml`
-
-При каждом push в ветку `main`:
-1. GitHub Actions подключается к VPS по SSH
-2. Делает `git pull origin main`
-3. Перезапускает Node контейнер если нужно
-
-**GitHub Secrets (добавить в репо → Settings → Secrets → Actions):**
-| Secret | Значение |
-|--------|---------|
-| VPS_HOST | 178.104.253.76 |
-| VPS_USER | root |
-| VPS_SSH_KEY | приватный SSH ключ (содержимое ~/.ssh/id_rsa) |
-| VPS_PORT | 22 |
-
-**Как получить SSH ключ для GitHub:**
-```bash
-# На локальной машине (если ключа нет):
-ssh-keygen -t ed25519 -C "github-actions"
-
-# Скопировать публичный ключ на VPS:
-ssh-copy-id root@178.104.253.76
-
-# Содержимое приватного ключа добавить в GitHub Secret VPS_SSH_KEY:
-cat ~/.ssh/id_ed25519
-```
-
----
-
-## docker-compose.yml структура
-
-```yaml
 services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  n8n:
-    image: n8nio/n8n
-    ports:
-      - "5678:5678"
-    environment:
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
-      - DB_POSTGRESDB_USER=${POSTGRES_USER}
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - n8n_data:/home/node/.n8n
-    depends_on:
-      - postgres
-
-  node:
-    image: node:20
-    working_dir: /app
-    volumes:
-      - ./scripts:/app/scripts
-      - ./node_modules:/app/node_modules
-      - /tmp/screenshots:/tmp/screenshots
-    env_file:
-      - .env
-    command: tail -f /dev/null  # держим контейнер живым
-
-volumes:
-  postgres_data:
-  n8n_data:
+  postgres   — PostgreSQL 15, volume для данных
+  workers    — Node воркеры (node-cron), общий образ, разные CLI-команды
+  web        — Next.js (если вариант B), иначе на Vercel
+  redis      — фаза 2 (BullMQ)
 ```
 
----
+## Repo / remote (решено ✅)
+- Остаёмся на `github.com/magicjhin/web-clients-automation.git` (origin уже привязан на VPS, деплой настроен).
+- Старый код уходит первым же коммитом нового стека (рабочее дерево пересоздаётся с нуля).
+- SSH с локальной машины: **`ssh leadgen`** (алиас в `~/.ssh/config`).
 
-## Инициализация БД (один раз)
+## Резерв из старого проекта (переиспользуется концептуально)
+- Паттерн `shared/` (db, logger, config) → теперь `src/lib/`
+- Docker Compose + GitHub Actions автодеплой
+- Структура воркеров с CLI-аргументами
+- **Заменено**: scraper.js (Puppeteer) → rc-sync (RC API). Снят главный блокер старого проекта (IP-бан/капча).
 
-```bash
-# На VPS после первого деплоя:
-docker exec -i leadgen_postgres psql -U leadgen leadgen < /opt/leadgen/db/init.sql
+## Безопасность (после инцидента BSI/CERT-Bund 2026-06-02)
+**Что было:** старый `docker-compose.yml` публиковал `ports: "5432:5432"` → Postgres торчал в
+открытый интернет на `0.0.0.0:5432`. BSI прислал уведомление через Hetzner. Контейнер снесён, порт закрыт.
 
-# Проверить таблицы:
-docker exec -it leadgen_postgres psql -U leadgen leadgen -c "\dt"
-```
+**Железные правила нового стека:**
+- ❌ **НИКОГДА не публиковать порт Postgres** (`ports:` для БД в compose запрещён).
+  Postgres доступен только во внутренней Docker-сети — web/workers ходят по имени сервиса `postgres:5432`.
+- Если нужен доступ с хоста (psql/миграции вручную) — биндить ТОЛЬКО на localhost: `127.0.0.1:5432:5432`.
+  Для удалённого доступа — через SSH-туннель, не публичный порт.
+- ⚠️ **Docker обходит ufw!** Опубликованный в compose порт пробивает iptables мимо ufw —
+  «ufw deny 5432» НЕ спасёт. Единственная защита — не публиковать порт вовсе (см. выше).
+- Наружу торчат только: **22 (SSH), 80/443 (Caddy)**. ufw активен (`default deny incoming`).
+- Caddy уже стоит на VPS (reverse-proxy + TLS) — Next.js (`web`) проксируем через него, наружу сам не публикуем.
 
----
-
-## Полезные команды на VPS
-
-```bash
-# Статус контейнеров
-docker ps
-
-# Логи n8n
-docker logs leadgen_n8n -f
-
-# Логи postgres
-docker logs leadgen_postgres -f
-
-# Подключиться к БД
-docker exec -it leadgen_postgres psql -U leadgen leadgen
-
-# Запустить Node скрипт вручную
-docker exec -it leadgen_node node scripts/parser/index.js --niche=restoranas
-
-# Перезапустить все сервисы
-docker-compose restart
-
-# Обновить код вручную (без GitHub Actions)
-cd /opt/leadgen && git pull origin main
-
-# Посмотреть использование ресурсов
-docker stats
-```
-
----
-
-## .gitignore
-
-```
-.env
-node_modules/
-/tmp/
-*.log
-.DS_Store
-```
-
----
-
-## .env.example (шаблон, в git)
-
-```
-# База данных
-POSTGRES_USER=leadgen
-POSTGRES_PASSWORD=
-POSTGRES_DB=leadgen
-DATABASE_URL=postgresql://leadgen:PASSWORD@postgres:5432/leadgen
-
-# Claude API
-ANTHROPIC_API_KEY=
-
-# Telegram
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-
-# Email исходящий (SMTP)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-FROM_EMAIL=
-FROM_NAME=
-
-# Email входящий (IMAP)
-IMAP_HOST=imap.gmail.com
-IMAP_USER=
-IMAP_PASS=
-
-# Внешние API
-GOOGLE_MAPS_API_KEY=
-PAGESPEED_API_KEY=
-
-# Настройки системы
-BATCH_SIZE=15
-FOLLOWUP_DAYS=3
-VIP_SCORE_THRESHOLD=80
-```
+## Прогрев домена (важно с фазы 1)
+- Отправка через мой Resend + домен `webvibe.lt` — с первого письма.
+- Репутация домена набирается временем → верификация (SPF/DKIM) и прогрев сразу, не откладывать.

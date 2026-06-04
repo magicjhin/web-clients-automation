@@ -1,9 +1,15 @@
 name: Deploy to VPS
 
+# Push в main → сервер сам подтягивает код и деплоит весь стек.
+# Секреты уже заведены в репозитории: VPS_HOST, VPS_USER, VPS_PASSWORD, VPS_PORT.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -19,8 +25,19 @@ jobs:
           script: |
             set -e
             cd /opt/leadgen
-            rm -rf package-lock.json
-            git pull origin main
-            # Пересоздать ТОЛЬКО node (без пересборки). --no-deps не трогает postgres.
-            docker compose up -d --no-deps node
+
+            # 1. Синхронизировать код ровно с origin/main (сносит остатки старого проекта,
+            #    .env не трогается — он untracked и reset --hard его не удаляет).
+            git fetch origin main
+            git reset --hard origin/main
+
+            # 2. Поднять/пересобрать стек (postgres + workers + web).
+            docker compose pull || true
+            docker compose up -d --build
+
+            # 3. Применить миграции БД (Prisma). postgres поднят и healthy (depends_on),
+            #    prisma CLI есть в образе web. Ошибка миграции ДОЛЖНА валить деплой (set -e).
+            docker compose run --rm web npx prisma migrate deploy
+
+            # 4. Статус
             docker compose ps

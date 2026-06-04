@@ -1,0 +1,358 @@
+// Leadgen LT — Prisma Schema
+// Источник истины: docs/DATABASE.md + leadgen-techspec.md
+// Мультитенант заложен с фазы 1: subscriber_id во всех таблицах лидов/контента.
+// На фазе 1 один subscriber (Aleksandr/Webvibe) — схему НЕ упрощать.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+/// Статус действующей компании в RC.
+/// veikiantis=1 → active. Качаем ТОЛЬКО active.
+enum CompanyStatus {
+  active
+  inactive
+  unknown
+}
+
+/// Статус обогащения компании через Google Places.
+enum EnrichStatus {
+  pending
+  places_done
+  fallback_done
+  /// Исчерпан месячный лимит 5000 запросов Places — ждём следующего месяца.
+  skipped_limit
+}
+
+/// Итог верификации сайта: принадлежит ли сайт этой компании.
+enum WebsiteStatus {
+  not_checked
+  candidate_found
+  verified_own_website
+  no_own_website
+  external_profile_only
+  ambiguous
+  wrong_match
+}
+
+/// Уверенность матчинга Places: high → auto_approved; medium/ambiguous → needs_review; low → не выдавать.
+enum MatchConfidence {
+  high
+  medium
+  low
+}
+
+/// Метод верификации принадлежности сайта компании.
+enum VerificationMethod {
+  rc_code_on_site
+  phone_match
+  address_match
+  strong_name_city_match
+  manual_review
+  none
+}
+
+/// Статус ревью обогащённой записи перед выдачей лида.
+/// high confidence → auto_approved; medium/ambiguous → needs_review.
+enum ReviewStatus {
+  auto_approved
+  needs_review
+  manually_approved
+  rejected
+}
+
+/// Ветка лида по результату обогащения.
+/// A_bad_site — сайт есть, но плохой; B_no_site — сайта нет.
+enum LeadBranch {
+  A_bad_site
+  B_no_site
+  not_lead
+}
+
+/// Ведро динамики: три состояния «жизни» компании в базе.
+enum Bucket {
+  /// Лид активен — подаётся подписчику.
+  active_lead
+  /// Сайт норм, перепроверить через N месяцев.
+  recheck_later
+  /// Компания закрыта / навсегда неактуальна.
+  dead
+}
+
+/// Статус подписчика платформы.
+enum SubscriberStatus {
+  active
+  trial
+  paused
+  cancelled
+}
+
+/// Статус аудита/письма в generated_content.
+enum ContentStatus {
+  draft
+  confirmed
+  sent
+}
+
+/// Исход лида (CRM-упрощение, фаза 1 — личная статистика).
+enum LeadOutcome {
+  sent
+  in_progress
+  won
+  no_response
+  lost
+}
+
+/// Статус биллинговой подписки (фаза 2).
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  cancelled
+}
+
+// ─────────────────────────────────────────────
+// ОБЩИЕ ТАБЛИЦЫ КОМПАНИЙ (не привязаны к подписчику)
+// ─────────────────────────────────────────────
+
+/// Сырьё из RC (только действующие компании Литвы, veikiantis=1).
+/// Источник: GET https://get.data.gov.lt/datasets/gov/rc/jar/JuridiniaiAsmenys/:entity
+model Company {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// RC-код компании (kodas). Upsert-ключ.
+  rc_code      String   @unique
+  /// Официальное название (pavadinimas).
+  name         String
+  /// Чистый код EVRK 2-го уровня: "41", "43.2" и т.д.
+  /// Извлекается из карты UUID→kodas, а НЕ из числового поля EVRK напрямую.
+  evrk2_code   String
+  /// Текстовое название EVRK (evrk_2_1_pavadinimas).
+  evrk2_name   String
+  /// Статус из RC: veikiantis=1 → active. В базу пишем ТОЛЬКО active.
+  status       CompanyStatus
+  sector       String?
+  /// Правовая форма (nuosavybes_forma_pavadinimas).
+  legal_form   String?
+  address      String?
+  city         String?
+  /// Дата регистрации (iregistruotas).
+  reg_date     DateTime? @db.Date
+  /// Финансовые данные из RC (баланс, прибыль).
+  /// АТРИБУТ карточки, НЕ фильтр платёжеспособности — хранить как есть, не анализировать.
+  financials   Json?
+  /// Когда последний раз синхронизировали из RC.
+  rc_synced_at DateTime?
+  created_at   DateTime  @default(now())
+
+  // Relations
+  enrichment   Enrichment?
+  lead_state   LeadState?
+  lead_deliveries LeadDelivery[]
+  generated_contents GeneratedContent[]
+
+  @@index([evrk2_code])
+  @@index([status])
+  @@index([evrk2_code, status])
+  @@map("companies")
+}
+
+/// Результаты обогащения компании: Google Places + HTML-верификация + PageSpeed.
+/// 1:1 к companies (company_id unique).
+model Enrichment {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// FK → companies. Уникален: 1:1.
+  company_id  String   @unique @db.Uuid
+  /// Статус прохождения пайплайна обогащения.
+  enrich_status EnrichStatus @default(pending)
+
+  /// Итог верификации сайта через HTML-верификацию.
+  website_status      WebsiteStatus @default(not_checked)
+  website_url         String?
+  phone               String?
+  google_rating       Decimal?      @db.Decimal(3, 1)
+  pagespeed_mobile    Int?
+  pagespeed_desktop   Int?
+  /// Проблемы аудита сайта, найденные при обогащении.
+  /// JSON-массив объектов {type, severity, detail}.
+  audit_issues        Json?
+  /// Ветка лида по итогу анализа: A_bad_site / B_no_site / not_lead.
+  lead_branch         LeadBranch?
+  enriched_at         DateTime?
+  /// Когда перепроверить (динамика — три ведра).
+  recheck_at          DateTime?
+
+  // Контроль матчинга Places
+  /// Сколько Text Search запросов потрачено на эту компанию (макс 1 по правилам).
+  places_query_count       Int     @default(0)
+  /// Был ли использован второй запрос (нарушение правила 1 запрос = 1 компания — логировать).
+  places_second_query_used Boolean @default(false)
+  /// Уверенность матчинга: high / medium / low.
+  places_match_confidence  MatchConfidence?
+  /// Числовой скор матчинга (0–100).
+  places_match_score       Int?
+  /// Детали скоринга: какие поля совпали и с каким весом.
+  places_match_reason      Json?
+  /// Метод верификации принадлежности сайта.
+  verification_method      VerificationMethod?
+  /// Статус ревью: high → auto_approved; medium/ambiguous → needs_review.
+  review_status            ReviewStatus @default(needs_review)
+
+  // Relation
+  company     Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("enrichment")
+}
+
+/// Учёт месячного лимита Google Places API (биллинговый месяц = календарный).
+/// Перед каждым запросом: проверка used < limit_max. Достигли → skipped_limit, стоп.
+model PlacesUsage {
+  id         String   @id @default(uuid()) @db.Uuid
+  /// Расчётный месяц в формате 'YYYY-MM'. @unique — одна строка на месяц,
+  /// чтобы upsert/increment были атомарны и жёсткий стоп 5000/мес нельзя было обойти.
+  period     String   @unique
+  /// Потрачено запросов в этом месяце.
+  used       Int      @default(0)
+  /// Жёсткий лимит (5000 по умолчанию = 200€/мес Google бесплатный порог).
+  limit_max  Int      @default(5000)
+  updated_at DateTime @updatedAt
+
+  @@map("places_usage")
+}
+
+/// Динамика компании: три ведра (active_lead / recheck_later / dead).
+/// Сайты деградируют — часть «не наших» сами перетекают в «наши» через recheck.
+model LeadState {
+  company_id  String    @id @db.Uuid
+  /// Текущее ведро.
+  bucket      Bucket
+  last_change DateTime  @default(now()) @updatedAt
+
+  // Relation
+  company     Company   @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("lead_state")
+}
+
+// ─────────────────────────────────────────────
+// МУЛЬТИТЕНАНТ (subscriber_id во всех таблицах лидов/контента)
+// ─────────────────────────────────────────────
+
+/// Подписчики платформы. На фазе 1 — один subscriber (Aleksandr/Webvibe).
+/// Фаза 2: регистрация, тарифы, биллинг, Resend, дедупликация.
+model Subscriber {
+  id                    String   @id @default(uuid()) @db.Uuid
+  email                 String   @unique
+  name                  String
+  company               String?
+  /// Тариф: 1=Лиды, 2=Лиды+Аудит, 3=Под ключ, 4=Максимум (CRM, фаза 3+).
+  tier                  Int      @default(1)
+  /// API-ключ Resend подписчика (фаза 2 — его домен, его имя в письме).
+  resend_api_key        String?
+  /// Верифицирован ли домен Resend.
+  resend_domain_verified Boolean @default(false)
+  /// Профиль для генерации писем: имя/компания/услуги/тон/портфолио.
+  /// Используется LLM для персонализации письма от имени подписчика.
+  profile               Json?
+  /// Вилка цен подписчика. Влияет на язык аудита и письма.
+  price_policy          Json?
+  /// Выбранные ниши (EVRK-коды): ["41", "43.2", "68"].
+  selected_niches       Json?
+  /// Правовая форма: физлицо / ИП / UAB / самозанятый (форма реквизитов).
+  legal_form            String?
+  status                SubscriberStatus @default(trial)
+  trial_ends_at         DateTime?
+  created_at            DateTime         @default(now())
+
+  // Relations
+  lead_deliveries    LeadDelivery[]
+  generated_contents GeneratedContent[]
+  subscriptions      Subscription[]
+
+  @@map("subscribers")
+}
+
+/// Выдача лидов подписчику + встроенная дедупликация.
+/// blocked_until — лид заблокирован на 1–2 дня после выдачи (при нескольких подписчиках одной ниши).
+model LeadDelivery {
+  id            String    @id @default(uuid()) @db.Uuid
+  subscriber_id String    @db.Uuid
+  company_id    String    @db.Uuid
+  delivered_at  DateTime  @default(now())
+  /// Дата снятия блокировки дедупликации (1–2 дня после delivered_at).
+  blocked_until DateTime?
+
+  // CRM-поля (личная статистика фазы 1 → воронка фазы 2)
+  /// Исход лида: sent→in_progress→won/no_response/lost.
+  lead_outcome  LeadOutcome @default(sent)
+  /// Дата закрытия сделки (won).
+  won_at        DateTime?
+  /// Сумма сделки в € (статистика ROI).
+  deal_value    Decimal?    @db.Decimal(10, 2)
+  /// Причина отказа (lost).
+  lost_reason   String?
+
+  // Relations
+  subscriber    Subscriber @relation(fields: [subscriber_id], references: [id], onDelete: Cascade)
+  company       Company    @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  // НЕ @@unique([subscriber_id, company_id]): одна компания НАМЕРЕННО выдаётся повторно со временем
+  // (follow-up, переобход после recheck, старение сайтов — §7/§13). Дедуп временный (blocked_until),
+  // а не «навсегда». Идемпотентность одного прогона lead-select обеспечивается проверкой blocked_until.
+  // Составной индекс — для быстрых выборок «последние выдачи этому подписчику по компании».
+  @@index([subscriber_id, company_id])
+  @@map("lead_delivery")
+}
+
+/// Аудит и письмо, сгенерированные для конкретного лида и подписчика.
+/// Фаза 2: Tier 2 — аудит; Tier 3 — аудит + письмо. Перед отправкой — подтверждение человеком (GDPR).
+model GeneratedContent {
+  id            String        @id @default(uuid()) @db.Uuid
+  subscriber_id String        @db.Uuid
+  company_id    String        @db.Uuid
+  /// Шаблонный аудит сайта (LLM только на Tier 3, иначе шаблон).
+  audit_text    String?
+  /// Персонализированное письмо на литовском (GPT-4o, фаза 2).
+  email_text    String?
+  /// draft — сгенерировано; confirmed — подписчик подтвердил; sent — отправлено через Resend.
+  status        ContentStatus @default(draft)
+  generated_at  DateTime      @default(now())
+  sent_at       DateTime?
+
+  // Relations
+  subscriber    Subscriber @relation(fields: [subscriber_id], references: [id], onDelete: Cascade)
+  company       Company    @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  // НЕ @@unique([subscriber_id, company_id]): возможны повторные генерации со временем (follow-up письма).
+  // Идемпотентность одного цикла audit-gen/email-gen — проверкой существующего draft в логике воркера.
+  // Составной индекс — для быстрых выборок контента по подписчику/компании.
+  @@index([subscriber_id, company_id])
+  @@map("generated_content")
+}
+
+/// Биллинговые подписки (Stripe, активен в фазе 2).
+/// На фазе 1 заполняется вручную при seed (один subscriber, tier=1).
+model Subscription {
+  id                  String             @id @default(uuid()) @db.Uuid
+  subscriber_id       String             @db.Uuid
+  /// Тариф подписки (дублирует subscriber.tier для аудита).
+  tier                Int
+  status              SubscriptionStatus @default(trialing)
+  /// Конец текущего оплаченного периода (Stripe current_period_end).
+  current_period_end  DateTime?
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+
+  // Relation
+  subscriber          Subscriber @relation(fields: [subscriber_id], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}

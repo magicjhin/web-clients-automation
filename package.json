@@ -1,28 +1,51 @@
 {
-  "name": "leadgen",
-  "version": "1.0.0",
-  "description": "Lithuanian B2B Lead Generation System",
+  "name": "leadgen-lt",
+  "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "parse": "node scripts/parser/index.js",
-    "filter": "node scripts/filter/index.js",
-    "audit": "node scripts/audit/index.js",
-    "followup": "node scripts/email/followup.js",
-    "imap": "node scripts/email/imap.js",
-    "bot": "node scripts/bot/index.js"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "imapflow": "^1.0.171",
-    "node-cron": "^3.0.3",
-    "node-telegram-bot-api": "^0.66.0",
-    "nodemailer": "^6.9.16",
-    "pg": "^8.13.1",
-    "puppeteer": "^23.10.0"
-  },
   "engines": {
     "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "worker:rc-sync": "tsx workers/rc-sync/index.ts",
+    "worker:enrich": "tsx workers/enrich/index.ts",
+    "worker:enrich-fallback": "tsx workers/enrich-fallback/index.ts",
+    "worker:audit-gen": "tsx workers/audit-gen/index.ts",
+    "worker:email-gen": "tsx workers/email-gen/index.ts",
+    "worker:lead-select": "tsx workers/lead-select/index.ts",
+    "worker:recheck": "tsx workers/recheck/index.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "dotenv": "^16.4.7",
+    "next": "^14.2.29",
+    "node-cron": "^3.0.3",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.9",
+    "@types/node-cron": "^3.0.11",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.29",
+    "postcss": "^8.5.1",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
   }
 }

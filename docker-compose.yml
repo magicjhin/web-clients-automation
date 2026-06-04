@@ -1,46 +1,79 @@
+---
+# Leadgen LT — Docker Compose
+# Сервисы: postgres, web (Next.js), workers (node-cron)
+# ⚠️ БЕЗОПАСНОСТЬ: порт postgres НЕ публикуется наружу (BSI инцидент 2026-06-02).
+#    Docker обходит ufw — единственная защита это отсутствие секции `ports` у postgres.
+#    Доступ к БД — только внутри Docker-сети по имени сервиса postgres:5432.
+# Наружу торчат только 22/80/443 через Caddy (reverse-proxy на хосте).
+
+x-common: &common
+  env_file: .env
+  restart: unless-stopped
+  networks:
+    - internal
+
 services:
+  # ── PostgreSQL 15 ──────────────────────────────────────────────────
   postgres:
-    image: postgres:15
-    container_name: leadgen_postgres
-    restart: unless-stopped
+    <<: *common
+    image: postgres:15-alpine
+    # ❌ НЕТ секции `ports` — БД не публикуется наружу (только internal сеть)
+    # Если нужен хост-доступ: SSH-туннель (ssh -L 5432:postgres:5432 leadgen)
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: leadgen
+      POSTGRES_USER: leadgen
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U leadgen -d leadgen"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
-  node:
-    build: .
-    container_name: leadgen_node
-    restart: unless-stopped
-    pids_limit: 16384
-    shm_size: '1gb'
-    ulimits:
-      nproc: 16384
-      nofile:
-        soft: 65536
-        hard: 65536
-    working_dir: /app
-    volumes:
-      - ./scripts:/app/scripts
-      - /tmp/screenshots:/tmp/screenshots
-    env_file:
-      - .env
+  # ── Next.js (web dashboard) ────────────────────────────────────────
+  web:
+    <<: *common
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    # Публикуем ТОЛЬКО на localhost — хостовый Caddy проксирует https://leadgen.domain → 127.0.0.1:3000.
+    # Не 0.0.0.0 (наружу не светим), но и не только internal — иначе хостовый Caddy не достучится (502).
+    ports:
+      - "127.0.0.1:3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "5678:5678"
-    command: node scripts/bot/index.js
+    environment:
+      DATABASE_URL: postgresql://leadgen:${POSTGRES_PASSWORD}@postgres:5432/leadgen
+      NODE_ENV: production
+
+  # ── Workers (node-cron оркестрация) ───────────────────────────────
+  workers:
+    <<: *common
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    command: ["npx", "tsx", "workers/_cron.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://leadgen:${POSTGRES_PASSWORD}@postgres:5432/leadgen
+      NODE_ENV: production
+    # Ресурсные лимиты (нет Puppeteer, RAM 4ГБ достаточно)
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+networks:
+  internal:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
