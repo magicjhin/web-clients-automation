@@ -28,12 +28,23 @@ interface Job {
 // lead-select/recheck — фаза 2 / позже, добавим в расписание, когда будут готовы.
 const SCHEDULE: Job[] = [
   { name: 'rc-sync', cron: '0 3 * * 1' }, // еженедельно, Пн 03:00 (срез RC обновляется редко)
-  // Самообогащение: каждые 10 минут по 400 компаний, 10 потоков (≈57k/день; под наблюдением за блоками).
-  { name: 'enrich', cron: '*/10 * * * *', args: ['--limit=400', '--batch=10'] },
+  // Самообогащение: каждые 5 минут по 400 компаний, 10 потоков. Anti-overlap пропускает запуск,
+  // если предыдущий ещё идёт → почти непрерывная работа без наложения потоков.
+  { name: 'enrich', cron: '*/5 * * * *', args: ['--limit=400', '--batch=10'] },
 ];
+
+// Воркеры, которые сейчас выполняются. Защита от наложения: если прошлый прогон
+// ещё идёт (enrich на медленных компаниях может выйти за интервал cron), новый НЕ стартуем —
+// иначе удвоится параллелизм и можно словить бан rekvizitai.
+const running = new Set<string>();
 
 function runWorker(job: Job): void {
   const wlog = log.child({ worker: job.name });
+  if (running.has(job.name)) {
+    wlog.warn('предыдущий прогон ещё идёт — пропускаю этот запуск (anti-overlap)');
+    return;
+  }
+  running.add(job.name);
   wlog.info({ args: job.args ?? [] }, 'spawning worker');
 
   const child = spawn('npx', ['tsx', `workers/${job.name}/index.ts`, ...(job.args ?? [])], {
@@ -42,10 +53,14 @@ function runWorker(job: Job): void {
   });
 
   child.on('exit', (code) => {
+    running.delete(job.name);
     if (code === 0) wlog.info('worker finished ok');
     else wlog.error({ code }, 'worker exited with error');
   });
-  child.on('error', (err) => wlog.error(err, 'failed to spawn worker'));
+  child.on('error', (err) => {
+    running.delete(job.name);
+    wlog.error(err, 'failed to spawn worker');
+  });
 }
 
 for (const job of SCHEDULE) {

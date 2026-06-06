@@ -240,16 +240,20 @@ async function guessDomain(name: string, rcCode: string): Promise<string> {
     .replace(/[^a-z0-9]+/g, '');
   if (slug.length < 3) return '';
   const nameTokens = name.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((t) => t.length >= 4);
-  for (const tld of SITE_TLDS) {
-    const url = `https://${slug}.${tld}`;
-    const { code, body } = await fetchHtml(url, 1, 6000);
-    if (code === 0 || !body) continue;
-    const low = body.toLowerCase();
-    if (low.includes('rekvizitai.vz.lt')) continue;
-    const hit = body.includes(rcCode) || nameTokens.some((t) => low.includes(t));
-    if (hit) return url;
-  }
-  return '';
+  // TLD пробуем ПАРАЛЛЕЛЬНО (разные домены, не rekvizitai → нагрузки на него не добавляет),
+  // затем берём первый подтверждённый в порядке приоритета SITE_TLDS (.lt раньше .com…).
+  const checks = await Promise.all(
+    SITE_TLDS.map(async (tld) => {
+      const url = `https://${slug}.${tld}`;
+      const { code, body } = await fetchHtml(url, 1, 6000);
+      if (code === 0 || !body) return null;
+      const low = body.toLowerCase();
+      if (low.includes('rekvizitai.vz.lt')) return null;
+      const hit = body.includes(rcCode) || nameTokens.some((t) => low.includes(t));
+      return hit ? url : null;
+    }),
+  );
+  return checks.find((u): u is string => Boolean(u)) ?? '';
 }
 
 // ─── Обогащение одной компании ──────────────────────────────────────────────────
