@@ -9,7 +9,11 @@
 - ✅ **2. Схема БД (мультитенант)** (db-schema) — 8 моделей, 11 enum, init-миграция. `subscriber_id` везде, индексы. Прошло Codex-гейт.
 - 📋 **3. Auth + форма реквизитов** (frontend-dev) — мой аккаунт, 2FA (email-код)/Google OAuth, обязательная форма реквизитов при регистрации (форма работы, реквизиты → профиль подписчика)
 - ✅ **4. `rc-sync`** (backend-pipeline) — забор классификатора EVRK (карта UUID→kodas) + всех `veikiantis=1` по курсору, upsert в companies. Проверен на живом API (dry-run), прошёл Codex-гейт (3 прохода). См. `docs/API_RC.md`.
-- 📋 **5. `enrich`** (backend-pipeline) — 1 Places-запрос + confidence-scoring + HTML-верификация + PageSpeed, жёсткий стоп 5000/мес, без доп. Places как fallback
+- 🔄 **5. `enrich`** (backend-pipeline) — ⚠️ ПЕРЕСМОТРЕНО 2026-06-04: основной источник = **rekvizitai по коду** (сайт+телефон+кредит-риск+адрес) + финансы из API реестра + email с сайта. Google Places устарел (76% not_in_places). Кредит-риск A/B/C keep, D/E drop = фильтр мусора.
+  - **2026-06-05:** найден и исправлен **баг website-парсера** — старый регэксп `svetainė\s+...` (плейн-текст) терял сайты, оформленные строкой таблицы `<td class="name">Tinklalapis</td><td class="value"><a href>` (показатель — LITIT/`litit.tech`). Правильный экстрактор = строгий по строке Tinklalapis. Идёт ре-скан 8 480 «без сайта» на VPS (`/tmp/resite.py`).
+  - Решена **архитектура обогащения = 3 БЕСПЛАТНЫХ слоя**: rekvizitai по коду → домен-угадка `{имя}.lt/.com/.eu/.tech` → поиск по имени через поисковый API (Serper/Brave; бесплатный скрейп поисковиков с VPS не работает).
+  - Платный XML-фид rekvizitai (€1150/год за 30k) **отклонён** — остаёмся на бесплатном скрейпе.
+  - Версия на Places закоммичена; боевой воркер ещё не написан. См. `AGENT_HANDOFF.md`.
 - 📋 **6. Дашборд + очередь review** (frontend-dev + designer) — список лидов, карточка с аудитом, статистика, отдельно `needs_review` (medium/ambiguous)
 - 📋 **7. `audit-gen`** (backend-pipeline) — шаблонный вариант (PageSpeed → формулировки), быстро для демо
 - 📋 **8. Отправка писем (мой домен webvibe.lt)** (backend-pipeline) — Resend + верификация домена сразу (прогрев репутации)

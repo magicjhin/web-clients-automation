@@ -74,7 +74,42 @@ GET https://get.data.gov.lt/datasets/gov/lsd/cl/evrk2_1/EkonominesVeiklosRusis
 - `gov/rc/jar/...` — реестр юрлиц: `balanso_ataskaitos` (балансы), `buveines` (адреса). Финансы = атрибут.
 - Финданные устаревают на 1–2 года — годятся как атрибут, не для оценки «сейчас».
 
-## Прочие источники (другие слои)
-- **Google Places API** — обогащение сайтом, 1 запрос/компания, стоп 5000/мес. См. техспек §3.2.
-- **PageSpeed Insights API** — скорость/Core Web Vitals, бесплатно, по домену.
-- **Bing/Brave Search / rekvizitai** — fallback для `not_in_places`/`ambiguous`, свой лимит (не Places).
+## Обогащение — ПЕРЕСМОТРЕНО 2026-06-04 (проверено на живых данных)
+
+> Google Places оказался слаб для LT B2B (76% `not_in_places`). Основной источник обогащения теперь — **rekvizitai.vz.lt по коду компании**. Полный контекст — `AGENT_HANDOFF.md`.
+
+### rekvizitai.vz.lt — основной источник (ПАРСИНГ карточек, бан НЕ ловится с VPS)
+1. **Поиск по коду** (надёжно, ~100%):
+   ```
+   GET https://rekvizitai.vz.lt/imones/1/?scrollTo=searchForm&name=&company_code=<rc_code>
+       &search_word=&industry=&search_terms=&location=&catUrlKey=&resetFilter=0&order=1&redirected=1
+   ```
+   В ответе: `Rasta įmonių: <strong>N</strong>` + первая ссылка `/imone/<slug>/` в результатах.
+2. **Карточка**: `GET https://rekvizitai.vz.lt/imone/<slug>/` — оттуда за один проход:
+   - **Сайт**: `svetainė <url>` (поле «Tinklalapis»). НЕТ поля → нет сайта (ветка B).
+   - **Телефон/мобильный**: числа `+370…` (в textarea-блоке `Tel.: +370…`).
+   - **Кредит-риск**: `prescore-risk` → `<span class="<цвет>">Žemiausia|Žema|Vidutinė|Aukšta|Aukščiausia</span>`
+     → грейд A/B/C/D/E. **Главный фильтр мусора (A/B/C keep, D/E drop).**
+   - **Адрес+город**: плейн-текст `Adresas: <улица>, <индекс> <Город>` (в textarea-блоке).
+   - El. paštas — НЕТ (email тут не показывают).
+- ⚠️ Бан только на СПИСКАХ-пагинации (стр. 21+). Карточки `/imone/` с датацентрового IP открыты (0 блоков на 12k+).
+- Rate-limit + детектор блока (429/403/503) обязательны. Эталонный скрипт-прогон: `/tmp/enrich_full.py` на VPS.
+
+### Финансы — API реестра (бесплатно, traversal по коду, ПРОВЕРЕНО)
+```
+GET https://get.data.gov.lt/datasets/gov/rc/jar/pelno_ataskaitos/PelnoAtaskaita?juridinis_asmuo.ja_kodas=<rc_code>&limit(400)
+```
+Построчная отчётность. Берём последний год (`laikotarpis_iki`): `line_name='PARDAVIMO PAJAMOS'` → выручка (`reiksme`);
+строка с `GRYNAS…PELN/NUOSTOL` → прибыль. Покрытие ~66–87%.
+
+### Контакты — где что есть (проверено)
+| | Сайт | Телефон | Email | Кредит-риск | Финансы |
+|---|---|---|---|---|---|
+| Реестр data.gov.lt | ❌ | ❌ | ❌ | ❌ | ✅ (API) |
+| rekvizitai карточка | ✅ | ✅ | ❌ | ✅ | (есть отдельно по API) |
+| Сайт компании | — | — | ✅ ~85% (ветка A) | — | — |
+> Email: только с сайта компании (ветка A). No-site компании = телефонные лиды. scoris=Cloudflare-блок; visalietuva=cf-обфускация.
+
+### Вторичное / на будущее
+- **Google Places API** — устарел как основной, годится для ниш с витриной (магазины/агентства). Ключ `GOOGLE_MAPS_API_KEY` (работает с локалки).
+- **PageSpeed Insights API** — скорость для аудита (ветка A). Ключ `PAGESPEED_API_KEY` ограничен по IP (работает только с VPS).

@@ -31,13 +31,14 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            # 2. Поднять/пересобрать стек (postgres + workers + web).
+            # 2. Поднять/пересобрать ТОЛЬКО postgres + workers.
+            #    web НЕ собираем на VPS (next build прожорлив, RAM 3.7ГБ) — дашборд деплоим отдельно.
             docker compose pull || true
-            docker compose up -d --build
+            docker compose up -d --build postgres workers
 
-            # 3. Применить миграции БД (Prisma). postgres поднят и healthy (depends_on),
-            #    prisma CLI есть в образе web. Ошибка миграции ДОЛЖНА валить деплой (set -e).
-            docker compose run --rm web npx prisma migrate deploy
+            # 3. Применить миграции БД (Prisma). postgres healthy (depends_on),
+            #    prisma CLI есть в лёгком образе workers. Ошибка миграции ДОЛЖНА валить деплой (set -e).
+            docker compose run --rm workers npx prisma migrate deploy
 
             # 4. Статус
             docker compose ps

@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# ─────────────────────────────────────────────────────────
+# Leadgen LT — лёгкий образ для воркеров (node-cron + tsx).
+# БЕЗ `next build` (web собирается отдельным Dockerfile) — экономия RAM на VPS (3.7 ГБ).
+# Содержит: node_modules (вкл. tsx, prisma CLI), prisma client, workers/, scripts/, src/lib.
+# ─────────────────────────────────────────────────────────
+
+FROM node:20-alpine AS deps
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json tsconfig.json ./
+COPY prisma ./prisma
+COPY src ./src
+COPY workers ./workers
+COPY scripts ./scripts
+
+# Prisma client под текущую схему (движок + типы).
+RUN npx prisma generate
+
+# По умолчанию — cron-оркестратор воркеров. Разовые скрипты — через `docker compose run`.
+CMD ["npx", "tsx", "workers/_cron.ts"]

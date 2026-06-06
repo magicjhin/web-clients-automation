@@ -55,8 +55,7 @@ services:
     <<: *common
     build:
       context: .
-      dockerfile: Dockerfile
-      target: runner
+      dockerfile: Dockerfile.worker # лёгкий образ без next build (экономия RAM на VPS 3.7ГБ)
     command: ["npx", "tsx", "workers/_cron.ts"]
     depends_on:
       postgres:
@@ -64,11 +63,11 @@ services:
     environment:
       DATABASE_URL: postgresql://leadgen:${POSTGRES_PASSWORD}@postgres:5432/leadgen
       NODE_ENV: production
-    # Ресурсные лимиты (нет Puppeteer, RAM 4ГБ достаточно)
+    # Ресурсный лимит (rekvizitai-обогащение: 6 потоков fetch + tsx, без Puppeteer)
     deploy:
       resources:
         limits:
-          memory: 512m
+          memory: 768m
 
 networks:
   internal:
