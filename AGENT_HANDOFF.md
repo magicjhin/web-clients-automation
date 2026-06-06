@@ -1,6 +1,45 @@
 # AGENT HANDOFF — Leadgen LT
 
-> Перезаписывай этот файл в конце каждой сессии. Дата последнего обновления: 2026-06-05 (вечер).
+> Перезаписывай этот файл в конце каждой сессии. Дата последнего обновления: 2026-06-06.
+
+## 🚀 СЕССИЯ 2026-06-06 — боевой контур на VPS, база обогащается сама
+
+**Итог: задеплоили полный стек обогащения на VPS, залили данные, запустили самообогащение. Работает автономно.**
+
+### Что сделано
+- **Ре-скан 8480 «без сайта» (вчерашний) завершён**: 0 блоков, исправленный экстрактор добрал 175 сайтов.
+  Честный итог по 12k (union 3 слоёв, дедуп): **5993 с сайтом / 5841 без**. Лидов после фильтра A/B/C — 7175.
+- **Схема под rekvizitai** (миграция `20260606071242_rekvizitai_enrichment_fields`):
+  Enrichment += `credit_risk`(enum A..E/unknown), `revenue/profit/fin_year`, `mobile`, `email`, `has_website`;
+  EnrichStatus += `rekvizitai_done`, `archived_garbage`. Чинил кривой порядок миграции (`add_not_in_places` → 191400).
+- **Боевой `workers/enrich`** переписан под rekvizitai по коду: строгий Tinklalapis-экстрактор (фикс LITIT),
+  кредит-риск, финансы из API реестра, домен-угадка (.lt/.com/.eu/.tech, транслит LT-букв), 6 потоков,
+  FETCH_ERR≠нет-сайта, D/E → `archived_garbage`. **Codex-гейт пройден** (2 находки P1/P2 исправлены, коммит b506344).
+- **`scripts/import-enrichment.ts`** — импорт ночного 12k (union 3 слоёв). Залито: 11834 (9174 лида + 2660 архив, 5993 сайт).
+- **Деплой на VPS** (`/opt/leadgen`, Docker Compose): postgres (внутренний, healthy) + workers (лёгкий `Dockerfile.worker` без next build).
+  160 536 компаний перенесены **pg_dump**'ом из локальной БД. Миграции применены.
+- **Самообогащение**: cron `enrich */10 * * * * --limit=200` (6 потоков, ~28k/день, 0 блоков). На момент закрытия — ~17.6k обогащено, ~143k осталось (добьёт за ~5 дней).
+
+### ⚠️ ИЗВЕСТНАЯ ПРОБЛЕМА — авто-деплой GitHub Action не работает
+- `deploy.yml` ходит на VPS по паролю (`VPS_PASSWORD`), но **на VPS отключён вход по паролю** (только ключ) →
+  Action падает: `ssh: handshake failed ... [none password]`. **Деплой делается ВРУЧНУЮ** через `ssh leadgen`:
+  `cd /opt/leadgen && git fetch && git reset --hard origin/main && docker compose up -d --build workers && docker compose run --rm workers npx prisma migrate deploy`.
+- **Фикс на будущее:** перевести `deploy.yml` на ключевую авторизацию (`key: ${{ secrets.VPS_SSH_KEY }}` вместо `password`),
+  завести секрет `VPS_SSH_KEY` (приватный ключ из `~/.ssh/id_ed25519`). Тогда push в main снова = авто-деплой.
+
+### VPS .env (новый стек)
+`/opt/leadgen/.env`: `POSTGRES_PASSWORD`, `DATABASE_URL=postgresql://leadgen:...@postgres:5432/leadgen`, `NODE_ENV=production`.
+Старый `.env` забэкаплен в `.env.old-backup`. DATABASE_URL для workers задан и в compose (environment) — приоритетнее .env.
+
+### СЛЕДУЮЩИЙ ШАГ
+1. (Опц.) Починить авто-деплой (ключевая авторизация — см. выше).
+2. **Web-дашборд**: собрать отдельно (next build прожорлив для VPS 3.7ГБ) — Vercel или отдельный билд → показать лиды/очередь review.
+3. `lead-select` (дневной отбор A/B/C + выручка≥порог) + `audit-gen` (PageSpeed для ветки A).
+4. Позже: перепрогнать часть `B_no_site` с транслит-фиксом домен-угадки (старые ~17k обогащены до фикса — у диакритик-компаний возможны ложные no-site; они `rekvizitai_done`, сами не перепрогонятся).
+5. `SERPER_API_KEY` для слоя-3 (поиск по имени) — ждём от пользователя.
+
+---
+
 
 ## 🔥 СЕССИЯ 2026-06-05 — починка website-парсера + финал архитектуры обогащения
 
