@@ -44,8 +44,8 @@ const RC_FIN = (code: string) =>
   `https://get.data.gov.lt/datasets/gov/rc/jar/pelno_ataskaitos/PelnoAtaskaita` +
   `?juridinis_asmuo.ja_kodas=${code}&limit(400)`;
 
-/** Жёсткий потолок параллелизма (поисковый эндпоинт rekvizitai не держит больше). */
-const CONCURRENCY = 6;
+/** Потолок параллелизма. 6 = проверенный 0-блоков; 10 — ускорение под наблюдением (16 даёт таймауты). */
+const CONCURRENCY = 10;
 /** Подряд блок-ответов (403/429/503), после которых прерываем прогон (защита от бана). */
 const BLOCK_ABORT = 6;
 const FETCH_TIMEOUT_MS = 20_000;
