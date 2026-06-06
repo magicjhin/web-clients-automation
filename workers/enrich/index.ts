@@ -61,6 +61,12 @@ const RISK_MAP: Record<string, CreditRisk> = {
 // TLD для домен-угадки {slug}.<tld>.
 const SITE_TLDS = ['lt', 'com', 'eu', 'tech'];
 
+// Транслитерация литовских диакритиков в ASCII (для домен-угадки: Švara → svara, а не vara).
+const LT_TRANSLIT: Record<string, string> = {
+  ą: 'a', č: 'c', ę: 'e', ė: 'e', į: 'i', š: 's', ų: 'u', ū: 'u', ž: 'z',
+};
+const deLt = (s: string) => s.replace(/[ąčęėįšųūž]/g, (c) => LT_TRANSLIT[c] ?? c);
+
 // ─── HTTP ─────────────────────────────────────────────────────────────────────
 
 type FetchResult = { code: number; body: string };
@@ -82,6 +88,12 @@ async function fetchHtml(url: string, tries = 2, timeoutMs = FETCH_TIMEOUT_MS): 
       });
       lastCode = r.status;
       if (isBlock(r.status)) return { code: r.status, body: '' }; // блок — не долбим
+      // Non-OK (404/500/502/504…) с error-HTML НЕ принимаем за валидный ответ:
+      // иначе пустой результат поиска финализируется как «нет сайта» (FETCH_ERR ≠ нет-сайта). Ретраим.
+      if (r.status >= 400) {
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
       const body = await r.text();
       if (body) return { code: r.status, body };
     } catch {
@@ -223,9 +235,8 @@ async function siteEmail(website: string): Promise<string> {
  * и нет редиректа на rekvizitai. Возвращает первый подтверждённый URL или ''.
  */
 async function guessDomain(name: string, rcCode: string): Promise<string> {
-  const slug = name
-    .toLowerCase()
-    .replace(/\b(uab|mb|všį|vši|ab|ką|ko|individuali|įmonė|imone)\b/gi, '')
+  const slug = deLt(name.toLowerCase())
+    .replace(/\b(uab|mb|vsi|ab|ka|ko|individuali|imone)\b/g, '') // правовые формы (уже транслит)
     .replace(/[^a-z0-9]+/g, '');
   if (slug.length < 3) return '';
   const nameTokens = name.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((t) => t.length >= 4);
