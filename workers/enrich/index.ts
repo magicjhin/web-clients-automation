@@ -46,8 +46,9 @@ const RC_FIN = (code: string) =>
   `https://get.data.gov.lt/datasets/gov/rc/jar/pelno_ataskaitos/PelnoAtaskaita` +
   `?juridinis_asmuo.ja_kodas=${code}&limit(400)`;
 
-/** Потолок параллелизма. 6 = проверенный 0-блоков (10 спровоцировал Cloudflare-бан IPv4 — откатано). */
-const CONCURRENCY = 6;
+/** Потолок параллелизма. 10 — осознанно (база на 55% обогащена так за ~2 дня; добиваем остаток).
+ *  Риск: при долбёжке Cloudflare со временем может забанить и IPv6 (последний чистый IP). */
+const CONCURRENCY = 10;
 /** Подряд блок-ответов (403/429/503), после которых прерываем прогон (защита от бана). */
 const BLOCK_ABORT = 6;
 const FETCH_TIMEOUT_MS = 20_000;
