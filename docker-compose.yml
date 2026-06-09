@@ -71,7 +71,15 @@ services:
 
 networks:
   internal:
+    # IPv6 включён: rekvizitai за Cloudflare забанил наш IPv4 (403), IPv6-путь чист (200).
+    # Воркер ходит на rekvizitai строго по IPv6 (family=6 в enrich). ULA-подсеть → NAT66 на
+    # глобальный IPv6 хоста (нужен "ip6tables":true в /etc/docker/daemon.json — на VPS вручную).
     driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+        - subnet: fd00:1ead:9e0::/64
 
 volumes:
   postgres_data:

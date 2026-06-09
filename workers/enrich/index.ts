@@ -24,6 +24,8 @@
  * НЕ импортирует src/lib/config — rekvizitai и RC API публичные, секреты не нужны.
  */
 
+import http from 'node:http';
+import https from 'node:https';
 import type { Logger } from 'pino';
 import { Prisma, type CreditRisk } from '@prisma/client';
 import { db } from '../../src/lib/db';
@@ -44,8 +46,8 @@ const RC_FIN = (code: string) =>
   `https://get.data.gov.lt/datasets/gov/rc/jar/pelno_ataskaitos/PelnoAtaskaita` +
   `?juridinis_asmuo.ja_kodas=${code}&limit(400)`;
 
-/** Потолок параллелизма. 6 = проверенный 0-блоков; 10 — ускорение под наблюдением (16 даёт таймауты). */
-const CONCURRENCY = 10;
+/** Потолок параллелизма. 6 = проверенный 0-блоков (10 спровоцировал Cloudflare-бан IPv4 — откатано). */
+const CONCURRENCY = 6;
 /** Подряд блок-ответов (403/429/503), после которых прерываем прогон (защита от бана). */
 const BLOCK_ABORT = 6;
 const FETCH_TIMEOUT_MS = 20_000;
@@ -74,33 +76,79 @@ type FetchResult = { code: number; body: string };
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 const isBlock = (c: number) => c === 403 || c === 429 || c === 503;
 
-/** Возвращает {code, body}. code=0 — сетевая ошибка/таймаут. Ретраи на пустое/сбойное. */
-async function fetchHtml(url: string, tries = 2, timeoutMs = FETCH_TIMEOUT_MS): Promise<FetchResult> {
+/**
+ * Низкоуровневый GET на node:https с возможностью форсить IP-семейство.
+ * ⚠️ family=6 нужен для rekvizitai: он за Cloudflare, и наш IPv4 им забанен (403) после
+ *    долбёжки в 10 потоков; IPv6-адрес хоста чист (200). Контейнеру включён IPv6 (см. compose).
+ *    Для прочих фетчей (домен-угадка, email) family=0 — иначе IPv4-only сайты отвалятся.
+ * Следует за редиректами (до 4), сохраняя family. status=0 — сетевая ошибка/таймаут.
+ */
+function rawGet(
+  url: string,
+  timeoutMs: number,
+  family: 0 | 4 | 6,
+  redirectsLeft = 4,
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (status: number, body: string) => {
+      if (settled) return;
+      settled = true;
+      resolve({ status, body });
+    };
+    const mod = url.startsWith('http://') ? http : https;
+    const req = mod.request(
+      url,
+      {
+        method: 'GET',
+        ...(family ? { family } : {}),
+        headers: { 'User-Agent': UA, Accept: 'text/html', 'Accept-Language': 'lt' },
+      },
+      (res) => {
+        const status = res.statusCode ?? 0;
+        const loc = res.headers.location;
+        if (status >= 300 && status < 400 && loc && redirectsLeft > 0) {
+          res.resume(); // сливаем тело редиректа
+          rawGet(new URL(loc, url).toString(), timeoutMs, family, redirectsLeft - 1).then((r) =>
+            done(r.status, r.body),
+          );
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => done(status, Buffer.concat(chunks).toString('utf8')));
+        res.on('error', () => done(status, ''));
+      },
+    );
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      done(0, '');
+    });
+    req.on('error', () => done(0, ''));
+    req.end();
+  });
+}
+
+/** Возвращает {code, body}. code=0 — сетевая ошибка/таймаут. Ретраи на пустое/сбойное.
+ *  family=6 форсит IPv6 (для rekvizitai — его IPv4 за Cloudflare забанен). */
+async function fetchHtml(
+  url: string,
+  tries = 2,
+  timeoutMs = FETCH_TIMEOUT_MS,
+  family: 0 | 4 | 6 = 0,
+): Promise<FetchResult> {
   let lastCode = 0;
   for (let attempt = 0; attempt < tries; attempt++) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-      const r = await fetch(url, {
-        headers: { 'User-Agent': UA, Accept: 'text/html', 'Accept-Language': 'lt' },
-        signal: ctrl.signal,
-        redirect: 'follow',
-      });
-      lastCode = r.status;
-      if (isBlock(r.status)) return { code: r.status, body: '' }; // блок — не долбим
-      // Non-OK (404/500/502/504…) с error-HTML НЕ принимаем за валидный ответ:
-      // иначе пустой результат поиска финализируется как «нет сайта» (FETCH_ERR ≠ нет-сайта). Ретраим.
-      if (r.status >= 400) {
-        await sleep(1500 * (attempt + 1));
-        continue;
-      }
-      const body = await r.text();
-      if (body) return { code: r.status, body };
-    } catch {
-      lastCode = 0;
-    } finally {
-      clearTimeout(t);
+    const { status, body } = await rawGet(url, timeoutMs, family);
+    lastCode = status;
+    if (isBlock(status)) return { code: status, body: '' }; // блок — не долбим
+    // Non-OK (404/500/502/504…) и сетевые сбои (0) — не валидный ответ: ретраим.
+    // иначе пустой результат поиска финализируется как «нет сайта» (FETCH_ERR ≠ нет-сайта).
+    if (status === 0 || status >= 400) {
+      await sleep(1500 * (attempt + 1));
+      continue;
     }
+    if (body) return { code: status, body };
     await sleep(1500 * (attempt + 1));
   }
   return { code: lastCode, body: '' };
@@ -268,8 +316,8 @@ interface EnrichResult {
 type CompanyRow = { id: string; rc_code: string; name: string };
 
 async function enrichOne(company: CompanyRow): Promise<EnrichResult> {
-  // 1. Поиск по коду → ссылка на карточку.
-  const search = await fetchHtml(SEARCH(company.rc_code));
+  // 1. Поиск по коду → ссылка на карточку. family=6 — rekvizitai ходим строго по IPv6 (IPv4 забанен).
+  const search = await fetchHtml(SEARCH(company.rc_code), 2, FETCH_TIMEOUT_MS, 6);
   if (isBlock(search.code)) return { outcome: 'block' };
   if (!search.body) return { outcome: 'fetch_err' };
   const link = cardLink(search.body);
@@ -278,8 +326,8 @@ async function enrichOne(company: CompanyRow): Promise<EnrichResult> {
     return finalize(company, '', EMPTY_CARD);
   }
 
-  // 2. Карточка.
-  const card = await fetchHtml(REKV_BASE + link);
+  // 2. Карточка. family=6 — тоже по IPv6.
+  const card = await fetchHtml(REKV_BASE + link, 2, FETCH_TIMEOUT_MS, 6);
   if (isBlock(card.code)) return { outcome: 'block' };
   if (!card.body) return { outcome: 'fetch_err' };
 
