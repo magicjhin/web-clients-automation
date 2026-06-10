@@ -6,7 +6,7 @@
 
 **Всё в ветке `claude/new-session-vinfl4` → открыт PR #1 (`magicjhin/web-clients-automation#1`). НЕ смёржен, НЕ задеплоен.**
 
-### Что сделано (задачи 6, 7, 10 закрыты)
+### Что сделано (задачи 6, 7, 10, 11 закрыты + фикс автодеплоя)
 - **Дашборд переделан в КОКПИТ** (жалоба владельца: v1 неудобный + все сайты помечались «Плохой сайт» ДО аудита).
   - Меню (`src/components/nav.tsx`): десктоп top-bar + мобильный bottom-tab, бейдж очереди.
   - **Сводка** (`/`): воронка (не обработано/в работе/ответили/игнор/отказ/сделки) + фильтр неделя/месяц/квартал · «кому позвонить» · превью «требует проверки». Списка базы тут НЕТ.
@@ -18,6 +18,8 @@
 - **PWA + push (зад. 10)**: manifest/SW/иконки, тоггл «Уведомления», VAPID, `PushSubscription`, `/api/push/*`. Пуш «Аудит готов» из audit-gen.
 - **Слой работы с лидом**: `LeadDelivery` += `next_call_at/last_contacted_at/note`; `src/lib/lead-actions.ts` (server actions); `src/lib/dashboard-queries.ts` += воронка/напоминания/очередь; `src/lib/subscriber.ts` (getCurrentSubscriberId).
 - **Миграции (не-деструктивные)**: `20260610120000_lead_workflow_and_audit_queue`, `20260610130000_push_subscriptions`.
+- **recheck (зад. 11)**: `workers/recheck` расставляет вёдра `LeadState` (active_lead=лид A/B/C / dead=RC-неактивна или archived_garbage / recheck_later=прочее), cron `30 4 * * *`. Пишет только `lead_state` + `enrichment.recheck_at` — `enrich_status` не трогает.
+- **🔧 Автодеплой ПОЧИНЕН в коде**: `deploy.yml` был красный с 2026-06-06 (`ssh handshake failed [none password]` — VPS отключил пароль). Перевёл на ключ (`key: secrets.VPS_SSH_KEY`). **Нужно завести секрет `VPS_SSH_KEY`** (приватный ключ от `ssh leadgen`) — тогда merge в main снова катит воркеры+миграции сам. ⚠️ workflow деплоит ТОЛЬКО postgres+workers+миграции, web (дашборд) — отдельным путём, кокпит этим workflow НЕ пересобирается.
 
 ### ⚠️ Что нужно сделать (деплой ВРУЧНУЮ — авто-деплой всё ещё сломан, см. ниже)
 1. Ревью + merge PR #1 (или сразу деплой ветки).
