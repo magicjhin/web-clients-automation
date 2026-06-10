@@ -12,12 +12,16 @@ import {
   MapPin,
   Building2,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CreditBadge, SiteBadge, ReviewBadge, PageSpeedBadge } from '@/components/badges';
+import { CreditBadge, SiteBadge, PageSpeedBadge } from '@/components/badges';
+import { LeadActionButton } from '@/components/lead-action-button';
+import { LeadNotes } from '@/components/lead-notes';
 import { getCompanyDetail } from '@/lib/dashboard-queries';
 import {
   formatCurrency,
@@ -52,10 +56,37 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           <div className="flex flex-wrap items-center gap-2">
             {e?.credit_risk && <CreditBadge risk={e.credit_risk} />}
             {e?.lead_branch && <SiteBadge branch={e.lead_branch} />}
-            {e?.review_status && <ReviewBadge status={e.review_status} />}
           </div>
         }
       />
+
+      {/* Обработка */}
+      <Card className="mb-4">
+        <CardHeader className="!flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4" />
+            Обработка
+          </CardTitle>
+          <Badge variant="outline" className="text-muted-foreground">
+            Не обработан
+          </Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <LeadActionButton companyName={company.name} size="default" />
+            <span className="text-sm text-muted-foreground">
+              Аудит + письмо в один клик → попадёт в «Проверку»
+            </span>
+          </div>
+          <Separator />
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Комментарий по обработке
+            </p>
+            <LeadNotes />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Контакты */}

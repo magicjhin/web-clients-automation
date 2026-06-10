@@ -376,6 +376,43 @@ export async function getProcessedSince(since: Date | null): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+// Проверка — сгенерированные аудит+письмо, ждущие ревью человеком
+// ---------------------------------------------------------------------------
+
+export interface ReviewDraft {
+  id: string;
+  companyId: string;
+  companyName: string;
+  hasAudit: boolean;
+  hasEmail: boolean;
+  generatedAt: Date;
+}
+
+/** Черновики (audit/email) со статусом draft — ждут подтверждения. Пока пусто (нет генерации). */
+export async function getReviewDrafts(): Promise<ReviewDraft[]> {
+  const rows = await db.generatedContent.findMany({
+    where: { status: 'draft' },
+    orderBy: { generated_at: 'desc' },
+    take: 50,
+    select: {
+      id: true,
+      audit_text: true,
+      email_text: true,
+      generated_at: true,
+      company: { select: { id: true, name: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    companyId: r.company.id,
+    companyName: r.company.name,
+    hasAudit: !!r.audit_text,
+    hasEmail: !!r.email_text,
+    generatedAt: r.generated_at,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Ниши (топ EVRK-разделов по числу лидов)
 // ---------------------------------------------------------------------------
 
