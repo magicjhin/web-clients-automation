@@ -45,10 +45,12 @@ export default async function BasePage({ searchParams }: PageProps) {
   const [result, stats, niches] = await Promise.all([
     getLeads(filters),
     getDashboardStats(),
-    getNicheStats(8),
+    getNicheStats(60),
   ]);
 
-  const nicheData = niches.map((n) => ({ name: evrkName(n.code2), leads: n.leads }));
+  const nicheData = niches.slice(0, 8).map((n) => ({ name: evrkName(n.code2), leads: n.leads }));
+  // Опции для фильтра — названия ниш (не номера EVRK), только те, что есть в базе.
+  const nicheOptions = niches.map((n) => ({ code: n.code2, label: evrkName(n.code2) }));
 
   return (
     <>
@@ -81,7 +83,7 @@ export default async function BasePage({ searchParams }: PageProps) {
       {/* Фильтры + список */}
       <Card className="mb-4 p-4">
         <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-          <LeadsFilters />
+          <LeadsFilters niches={nicheOptions} />
         </Suspense>
       </Card>
 

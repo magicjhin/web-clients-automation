@@ -20,7 +20,11 @@ import {
 
 const ALL = '__all__';
 
-export function LeadsFilters() {
+export function LeadsFilters({
+  niches,
+}: {
+  niches?: { code: string; label: string }[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -95,17 +99,20 @@ export function LeadsFilters() {
         </Select>
       </Field>
 
-      <Field label="Ниша (EVRK)" htmlFor="f-niche">
-        <Input
-          id="f-niche"
-          className="w-28"
-          placeholder="41, 43…"
-          defaultValue={get('niche')}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') updateParam('niche', (e.target as HTMLInputElement).value);
-          }}
-          onBlur={(e) => updateParam('niche', e.target.value)}
-        />
+      <Field label="Ниша" htmlFor="f-niche">
+        <Select value={get('niche') || ALL} onValueChange={(v) => updateParam('niche', v)}>
+          <SelectTrigger id="f-niche" className="w-[210px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Все ниши</SelectItem>
+            {niches?.map((n) => (
+              <SelectItem key={n.code} value={n.code}>
+                {n.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
 
       {hasFilters && (
