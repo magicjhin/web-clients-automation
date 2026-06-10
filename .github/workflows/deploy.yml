@@ -1,7 +1,13 @@
 name: Deploy to VPS
 
-# Push в main → сервер сам подтягивает код и деплоит весь стек.
-# Секреты уже заведены в репозитории: VPS_HOST, VPS_USER, VPS_PASSWORD, VPS_PORT.
+# Push в main → GitHub по SSH (ключ) запускает на VPS общий деплой-скрипт
+# /usr/local/bin/leadgen-deploy — тот же, что и крон-поллер раз в минуту.
+# Внутри скрипта flock: одновременный запуск Action и поллера безопасен (один
+# берёт лок и деплоит origin/main, второй мгновенно выходит). Логика деплоя
+# (reset --hard origin/main → docker compose up --build → prisma migrate deploy)
+# живёт в одном месте — в скрипте на VPS, а не дублируется здесь.
+#
+# Секреты: VPS_HOST, VPS_USER, VPS_SSH_KEY (приватный ключ), VPS_PORT.
 on:
   push:
     branches: [main]
@@ -15,30 +21,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy via SSH (key auth)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd /opt/leadgen
-
-            # 1. Синхронизировать код ровно с origin/main (сносит остатки старого проекта,
-            #    .env не трогается — он untracked и reset --hard его не удаляет).
-            git fetch origin main
-            git reset --hard origin/main
-
-            # 2. Поднять/пересобрать ТОЛЬКО postgres + workers.
-            #    web НЕ собираем на VPS (next build прожорлив, RAM 3.7ГБ) — дашборд деплоим отдельно.
-            docker compose pull || true
-            docker compose up -d --build postgres workers
-
-            # 3. Применить миграции БД (Prisma). postgres healthy (depends_on),
-            #    prisma CLI есть в лёгком образе workers. Ошибка миграции ДОЛЖНА валить деплой (set -e).
-            docker compose run --rm workers npx prisma migrate deploy
-
-            # 4. Статус
-            docker compose ps
+            /usr/local/bin/leadgen-deploy
