@@ -13,6 +13,7 @@ import React from 'react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { PushToggle } from '@/components/push-toggle';
 
 interface NavProps {
   reviewCount?: number;
@@ -96,7 +97,8 @@ export function Nav({ reviewCount = 0 }: NavProps) {
               );
             })}
 
-            <div className="ml-2 pl-2 border-l border-gray-200">
+            <div className="ml-2 pl-2 border-l border-gray-200 flex items-center gap-1">
+              <PushToggle compact />
               <a
                 href="/api/logout"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
@@ -112,8 +114,9 @@ export function Nav({ reviewCount = 0 }: NavProps) {
 
       {/* ── Mobile top bar (brand name only, no nav — tabs are at bottom) ── */}
       <header className="sm:hidden sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-        <div className="h-12 flex items-center justify-center">
+        <div className="h-12 flex items-center justify-between px-4">
           <span className="text-base font-bold text-brand-700 tracking-tight">Leadgen LT</span>
+          <PushToggle compact />
         </div>
       </header>
 

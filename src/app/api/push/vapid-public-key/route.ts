@@ -10,6 +10,8 @@
 import { config } from '@/lib/config';
 
 export const runtime = 'nodejs';
+// Динамический: ключ читается из рантайм-env, а не запекается в статику на билде.
+export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<Response> {
   return Response.json({ key: config.VAPID_PUBLIC_KEY });
