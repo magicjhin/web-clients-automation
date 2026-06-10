@@ -69,7 +69,7 @@ export function LeadsFilters() {
           className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
         >
           <option value="">Все</option>
-          <option value="A_bad_site">A · Плохой сайт</option>
+          <option value="A_bad_site">A · Есть сайт</option>
           <option value="B_no_site">B · Нет сайта</option>
         </select>
       </div>

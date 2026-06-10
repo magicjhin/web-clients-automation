@@ -1,21 +1,21 @@
 /**
- * lead/[id]/page.tsx — full detail view for one company + enrichment.
+ * lead/[id]/page.tsx — Full detail view for one company + enrichment.
  *
  * Server component. Reads DB via getCompanyDetail.
- * Shows all fields: company info, enrichment, finances, contacts, PageSpeed.
- * Mobile-friendly layout with sticky quick-action bar at bottom on phones.
+ * Renders: company info, enrichment, contacts, PageSpeed, finances.
+ * Includes LeadActions client component for CRM actions.
  *
  * Protected by middleware.ts.
  */
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Header } from '@/components/header';
-import { BranchBadge, CreditBadge, PageSpeedBadge } from '@/components/badges';
+import { Nav } from '@/components/nav';
+import { BranchBadge, CreditBadge, PageSpeedBadge, SlowSiteBadge } from '@/components/badges';
+import { LeadActions } from '@/components/lead-actions';
 import { getCompanyDetail } from '@/lib/dashboard-queries';
 import { formatCurrency, formatDate, formatDomain, formatNumber, externalHref } from '@/lib/format';
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
@@ -31,23 +31,29 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const primaryPhone = e?.phone ?? e?.mobile;
   const secondaryPhone = e?.phone && e?.mobile ? e.mobile : null;
 
+  // Состояние работы с лидом + статус аудита из getCompanyDetail.
+  const currentOutcome = company.work.outcome;        // 'sent'|'in_progress'|'no_response'|'lost'|'won'|null
+  const callbackDate = company.work.next_call_at;     // ISO | null
+  const noteText = company.work.note;                 // string | null
+  const auditStatus = e?.audit_status ?? null;        // 'not_requested'|'queued'|'running'|'done'|'failed'
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
+    <div className="min-h-screen bg-gray-50 pb-20 sm:pb-6">
+      <Nav />
 
       {/* Back navigation */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4">
         <Link
-          href="/"
+          href="/leads"
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-700 transition"
-          aria-label="Назад к списку лидов"
+          aria-label="Назад к базе лидов"
         >
           <BackArrow />
-          Все лиды
+          База лидов
         </Link>
       </div>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-4 pb-24 sm:pb-6 space-y-5">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-4 space-y-5">
 
         {/* ── Company header ──────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -64,16 +70,28 @@ export default async function LeadDetailPage({ params }: PageProps) {
             <div className="flex flex-wrap gap-2">
               {e?.lead_branch && <BranchBadge branch={e.lead_branch} />}
               {e?.credit_risk && <CreditBadge risk={e.credit_risk} />}
+              <SlowSiteBadge pagespeed_mobile={e?.pagespeed_mobile ?? null} />
             </div>
           </div>
 
-          {/* Credit label */}
           {e?.credit_label && (
             <p className="mt-3 text-xs text-gray-500">
               Кредит-риск: <span className="font-medium text-gray-700">{e.credit_label}</span>
             </p>
           )}
         </div>
+
+        {/* ── CRM Actions ─────────────────────────────────────────── */}
+        <SectionCard title="Действия">
+          <LeadActions
+            companyId={company.id}
+            currentOutcome={currentOutcome}
+            hasWebsite={e?.has_website ?? false}
+            auditStatus={auditStatus}
+            callbackDate={callbackDate}
+            note={noteText}
+          />
+        </SectionCard>
 
         {/* ── Contacts ────────────────────────────────────────────── */}
         <SectionCard title="Контакты">
@@ -244,8 +262,8 @@ export default async function LeadDetailPage({ params }: PageProps) {
       </main>
 
       {/* ── Mobile quick-action sticky bar ──────────────────────────── */}
-      {primaryPhone || e?.website_url ? (
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 z-20">
+      {(primaryPhone ?? e?.website_url) ? (
+        <div className="sm:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 z-20">
           {primaryPhone && (
             <a
               href={`tel:${primaryPhone.replace(/\s/g, '')}`}
@@ -434,6 +452,5 @@ function GlobeIcon() {
   );
 }
 
-// Suppress "unused" warning — formatNumber is used in the page but linter
-// might miss it since it's only referenced in JSX expressions.
+// Suppress unused import warning
 void formatNumber;

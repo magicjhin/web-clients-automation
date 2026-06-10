@@ -99,8 +99,16 @@ model Enrichment {
   verification_method      VerificationMethod?
   /// Статус ревью: high → auto_approved; medium/ambiguous → needs_review.
   review_status            ReviewStatus        @default(needs_review)
+  /// Статус очереди аудита: not_requested → queued → running → done/failed.
+  /// Кнопка «Запустить аудит» в дашборде выставляет queued; worker audit-gen дренажит очередь.
+  audit_status             AuditStatus         @default(not_requested)
+  /// Когда оператор поставил лид в очередь аудита.
+  audit_requested_at       DateTime?
+  /// Когда worker завершил генерацию аудита (done или failed).
+  audit_done_at            DateTime?
   company                  Company             @relation(fields: [company_id], references: [id], onDelete: Cascade)
 
+  @@index([audit_status])
   @@map("enrichment")
 }
 
@@ -160,31 +168,59 @@ model Subscriber {
   generated_contents     GeneratedContent[]
   lead_deliveries        LeadDelivery[]
   subscriptions          Subscription[]
+  push_subscriptions     PushSubscription[]
 
   @@map("subscribers")
+}
+
+/// Web Push подписки (PWA, фаза 1). Один subscriber может иметь несколько устройств.
+/// Используются для уведомлений (напр. «аудит готов»). VAPID-ключи — из env (src/lib/config).
+model PushSubscription {
+  id            String     @id @default(uuid()) @db.Uuid
+  subscriber_id String     @db.Uuid
+  /// Уникальный endpoint браузерного push-сервиса (ключ дедупликации устройства).
+  endpoint      String     @unique
+  /// Ключи шифрования из PushSubscription.getKey() (base64url).
+  p256dh        String
+  auth          String
+  /// User-Agent устройства (для справки/очистки старых подписок).
+  user_agent    String?
+  created_at    DateTime   @default(now())
+  subscriber    Subscriber @relation(fields: [subscriber_id], references: [id], onDelete: Cascade)
+
+  @@index([subscriber_id])
+  @@map("push_subscriptions")
 }
 
 /// Выдача лидов подписчику + встроенная дедупликация.
 /// blocked_until — лид заблокирован на 1–2 дня после выдачи (при нескольких подписчиках одной ниши).
 model LeadDelivery {
-  id            String      @id @default(uuid()) @db.Uuid
-  subscriber_id String      @db.Uuid
-  company_id    String      @db.Uuid
-  delivered_at  DateTime    @default(now())
+  id               String      @id @default(uuid()) @db.Uuid
+  subscriber_id    String      @db.Uuid
+  company_id       String      @db.Uuid
+  delivered_at     DateTime    @default(now())
   /// Дата снятия блокировки дедупликации (1–2 дня после delivered_at).
-  blocked_until DateTime?
+  blocked_until    DateTime?
   /// Исход лида: sent→in_progress→won/no_response/lost.
-  lead_outcome  LeadOutcome @default(sent)
+  lead_outcome     LeadOutcome @default(sent)
   /// Дата закрытия сделки (won).
-  won_at        DateTime?
+  won_at           DateTime?
   /// Сумма сделки в € (статистика ROI).
-  deal_value    Decimal?    @db.Decimal(10, 2)
+  deal_value       Decimal?    @db.Decimal(10, 2)
   /// Причина отказа (lost).
-  lost_reason   String?
-  company       Company     @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  subscriber    Subscriber  @relation(fields: [subscriber_id], references: [id], onDelete: Cascade)
+  lost_reason      String?
+  /// Запланированная дата следующего звонка (источник блока «кому позвонить сегодня»).
+  next_call_at     DateTime?
+  /// Дата последнего контакта с компанией.
+  last_contacted_at DateTime?
+  /// Свободная заметка оператора по лиду.
+  note             String?
+  company          Company     @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  subscriber       Subscriber  @relation(fields: [subscriber_id], references: [id], onDelete: Cascade)
 
   @@index([subscriber_id, company_id])
+  @@index([subscriber_id, next_call_at])
+  @@index([subscriber_id, lead_outcome])
   @@map("lead_delivery")
 }
 
@@ -338,6 +374,16 @@ enum LeadOutcome {
   won
   no_response
   lost
+}
+
+/// Статус очереди генерации аудита сайта (worker audit-gen).
+/// not_requested → queued (кнопка дашборда) → running (воркер взял в работу) → done/failed.
+enum AuditStatus {
+  not_requested
+  queued
+  running
+  done
+  failed
 }
 
 /// Статус биллинговой подписки (фаза 2).

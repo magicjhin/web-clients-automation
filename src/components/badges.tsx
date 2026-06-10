@@ -1,11 +1,13 @@
 /**
- * badges.tsx — Lead branch and credit risk badges for the dashboard.
+ * badges.tsx — Lead branch, credit risk, PageSpeed, and slow-site badges.
  *
- * BranchBadge: A_bad_site = amber "Плохой сайт", B_no_site = blue "Нет сайта"
+ * BranchBadge: A_bad_site = "A · Есть сайт" (neutral, site present but not audited),
+ *              B_no_site = "B · Без сайта"
+ * SlowSiteBadge: shown ONLY when pagespeed_mobile != null && < 50 (proven by audit data)
  * CreditBadge: A = green, B = teal, C = amber
  */
 
-// No "use client" — these are pure presentational components, usable in RSC.
+// No "use client" — pure presentational components, usable in RSC.
 
 interface BranchBadgeProps {
   branch: 'A_bad_site' | 'B_no_site' | string;
@@ -14,21 +16,38 @@ interface BranchBadgeProps {
 export function BranchBadge({ branch }: BranchBadgeProps) {
   if (branch === 'A_bad_site') {
     return (
-      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-        A · Плохой сайт
+      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+        A · Есть сайт
       </span>
     );
   }
   if (branch === 'B_no_site') {
     return (
-      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-        B · Нет сайта
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+        B · Без сайта
       </span>
     );
   }
   return (
     <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
       {branch}
+    </span>
+  );
+}
+
+interface SlowSiteBadgeProps {
+  pagespeed_mobile: number | null;
+}
+
+/**
+ * Shows "Медленный сайт" ONLY when audit has been run AND score < 50.
+ * Returns null otherwise — no badge = no claim.
+ */
+export function SlowSiteBadge({ pagespeed_mobile }: SlowSiteBadgeProps) {
+  if (pagespeed_mobile == null || pagespeed_mobile >= 50) return null;
+  return (
+    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+      Медленный сайт
     </span>
   );
 }
