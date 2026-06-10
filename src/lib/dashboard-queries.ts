@@ -9,6 +9,7 @@
 
 import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
+import { getCurrentSubscriberId } from '@/lib/subscriber';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -290,75 +291,59 @@ export async function getFunnelStats(
   // Период-фильтр для LeadDelivery
   const deliveredAtFilter = cutoff ? { delivered_at: { gte: cutoff } } : {};
 
-  // Все квалифицирующие company_id
-  const qualifyingEnrichments = await db.enrichment.findMany({
-    where: {
-      enrich_status: 'rekvizitai_done',
-      lead_branch: { in: ['A_bad_site', 'B_no_site'] },
-      credit_risk: { in: ['A', 'B', 'C'] },
-    },
-    select: { company_id: true },
-  });
+  // Критерий квалифицирующего лида (тот же, что в getLeads).
+  const qualifying: Prisma.EnrichmentWhereInput = {
+    enrich_status: 'rekvizitai_done',
+    lead_branch: { in: ['A_bad_site', 'B_no_site'] },
+    credit_risk: { in: ['A', 'B', 'C'] },
+  };
 
-  const qualifyingIds = qualifyingEnrichments.map((e) => e.company_id);
-  const totalQualifying = qualifyingIds.length;
+  // LeadDelivery → company → enrichment квалифицирующий (relation-фильтр, БЕЗ выгрузки
+  // ~97k company_id в IN-список — иначе тяжёлый запрос на каждый показ Сводки).
+  const qualifyingDelivery: Prisma.LeadDeliveryWhereInput = {
+    subscriber_id: subscriberId,
+    company: { enrichment: { is: qualifying } },
+  };
 
-  if (!totalQualifying) {
-    return { totalQualifying: 0, notProcessed: 0, inWork: 0, responded: 0, ignored: 0, refused: 0, won: 0 };
-  }
+  const [totalQualifying, processedAll, grouped] = await Promise.all([
+    db.enrichment.count({ where: qualifying }),
+    // Все взятые в работу (любой период) — для notProcessed. Одна запись на компанию.
+    db.leadDelivery.count({ where: qualifyingDelivery }),
+    // Счётчики по исходу за выбранный период.
+    db.leadDelivery.groupBy({
+      by: ['lead_outcome'],
+      where: { ...qualifyingDelivery, ...deliveredAtFilter },
+      _count: { _all: true },
+    }),
+  ]);
 
-  // LeadDelivery этого subscriber для квалифицирующих компаний
-  const deliveries = await db.leadDelivery.findMany({
-    where: {
-      subscriber_id: subscriberId,
-      company_id: { in: qualifyingIds },
-      ...deliveredAtFilter,
-    },
-    select: { company_id: true, lead_outcome: true },
-  });
-
-  // Компании, у которых есть хотя бы одна запись LeadDelivery (subscriber-specific)
-  const deliveredCompanyIds = new Set(deliveries.map((d) => d.company_id));
-
-  // notProcessed = квалифицирующие БЕЗ любой LeadDelivery для этого subscriber (не зависит от period)
-  const allDeliveries = await db.leadDelivery.findMany({
-    where: {
-      subscriber_id: subscriberId,
-      company_id: { in: qualifyingIds },
-    },
-    select: { company_id: true },
-  });
-  const allDeliveredIds = new Set(allDeliveries.map((d) => d.company_id));
-  const notProcessed = qualifyingIds.filter((id) => !allDeliveredIds.has(id)).length;
-
-  // Счётчики по outcome из period-filtered deliveries
   let inWork = 0;
   let responded = 0;
   let ignored = 0;
   let refused = 0;
   let won = 0;
-
-  // Группируем по company_id — берём последний (по смыслу единственный активный) outcome
-  // В нашей модели у одного subscriber+company может быть одна запись LeadDelivery
-  for (const d of deliveries) {
-    switch (d.lead_outcome) {
+  for (const g of grouped) {
+    const n = g._count._all;
+    switch (g.lead_outcome) {
       case 'sent':
-        inWork++;
+        inWork += n;
         break;
       case 'in_progress':
-        responded++;
+        responded += n;
         break;
       case 'no_response':
-        ignored++;
+        ignored += n;
         break;
       case 'lost':
-        refused++;
+        refused += n;
         break;
       case 'won':
-        won++;
+        won += n;
         break;
     }
   }
+
+  const notProcessed = Math.max(0, totalQualifying - processedAll);
 
   return { totalQualifying, notProcessed, inWork, responded, ignored, refused, won };
 }
@@ -448,27 +433,22 @@ export interface ReviewItem {
 }
 
 /**
- * Возвращает очередь на ревью:
- *   - review_status='needs_review' (требует ручного подтверждения)
- *   - audit_status='done' (аудит готов к просмотру)
+ * Возвращает очередь на ревью = аудиты, готовые к проверке человеком (audit_status='done').
  *
- * reason='audit_ready' если audit_status='done', иначе 'needs_review'.
+ * ВАЖНО: НЕ используем review_status='needs_review' — воркер enrich ставит этот статус
+ * ВСЕМ не-мусорным записям по умолчанию (см. workers/enrich), поэтому он залил бы очередь
+ * всей базой (~97k). Очередь = только то, по чему оператор запросил аудит и он посчитан.
+ * Письма (фаза 2) добавятся сюда тем же принципом — content.status='draft'/'confirmed'.
  * Лимит 100 записей.
  */
 export async function getReviewQueue(subscriberId: string): Promise<ReviewItem[]> {
-  // subscriberId используется в мультитенантном контексте (фаза 2).
-  // На фазе 1 фильтр по subscriber не нужен (один subscriber = всё его),
-  // но параметр принимается для совместимости с будущим контрактом.
+  // subscriberId — для совместимости с мультитенантным контрактом (фаза 2). На фазе 1
+  // один subscriber, аудит запрашивается на его лидах, доп. фильтр не нужен.
   void subscriberId;
 
   const rows = await db.enrichment.findMany({
-    where: {
-      OR: [
-        { review_status: 'needs_review' },
-        { audit_status: 'done' },
-      ],
-    },
-    orderBy: [{ audit_status: 'desc' }, { audit_done_at: 'desc' }],
+    where: { audit_status: 'done' },
+    orderBy: [{ audit_done_at: 'desc' }],
     take: 100,
     select: {
       company_id: true,
@@ -533,12 +513,19 @@ export interface CompanyDetail {
     pagespeed_mobile: number | null;
     pagespeed_desktop: number | null;
     audit_issues: Prisma.JsonValue | null;
+    audit_status: string;
     lead_branch: string | null;
     review_status: string;
     enriched_at: Date | null;
     places_match_confidence: string | null;
     places_match_score: number | null;
   } | null;
+  /** Состояние работы с лидом (LeadDelivery текущего subscriber). */
+  work: {
+    outcome: string | null;
+    next_call_at: string | null; // ISO
+    note: string | null;
+  };
 }
 
 export async function getCompanyDetail(id: string): Promise<CompanyDetail | null> {
@@ -564,6 +551,7 @@ export async function getCompanyDetail(id: string): Promise<CompanyDetail | null
           pagespeed_mobile: true,
           pagespeed_desktop: true,
           audit_issues: true,
+          audit_status: true,
           lead_branch: true,
           review_status: true,
           enriched_at: true,
@@ -576,6 +564,13 @@ export async function getCompanyDetail(id: string): Promise<CompanyDetail | null
 
   if (!company) return null;
 
+  // Состояние работы с лидом (LeadDelivery текущего subscriber).
+  const subscriberId = await getCurrentSubscriberId();
+  const delivery = await db.leadDelivery.findFirst({
+    where: { subscriber_id: subscriberId, company_id: id },
+    select: { lead_outcome: true, next_call_at: true, note: true },
+  });
+
   return {
     ...company,
     enrichment: company.enrichment
@@ -586,5 +581,10 @@ export async function getCompanyDetail(id: string): Promise<CompanyDetail | null
           google_rating: company.enrichment.google_rating?.toString() ?? null,
         }
       : null,
+    work: {
+      outcome: delivery?.lead_outcome ?? null,
+      next_call_at: delivery?.next_call_at?.toISOString() ?? null,
+      note: delivery?.note ?? null,
+    },
   };
 }
