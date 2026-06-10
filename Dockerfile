@@ -18,6 +18,10 @@ RUN npm ci
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# openssl нужен Prisma при generate: без него движок собирается под openssl-1.1 (libssl.so.1.1),
+# которого в alpine нет → рантайм-краш. С openssl детектится 3.0.x → правильный движок.
+RUN apk add --no-cache libc6-compat openssl
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -31,6 +35,9 @@ RUN npm run build
 # Stage 3: runner — минимальный образ для запуска
 FROM node:20-alpine AS runner
 WORKDIR /app
+
+# Prisma query engine в рантайме требует openssl (libssl.so.3); libc6-compat — нативные модули.
+RUN apk add --no-cache libc6-compat openssl
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
