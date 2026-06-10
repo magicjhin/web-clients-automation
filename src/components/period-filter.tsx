@@ -9,13 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-export const PERIODS: { value: string; label: string; days: number | null }[] = [
-  { value: 'all', label: 'За всё время', days: null },
-  { value: '90', label: 'Последние 90 дней', days: 90 },
-  { value: '30', label: 'Последние 30 дней', days: 30 },
-  { value: '7', label: 'Последние 7 дней', days: 7 },
-];
+import { PERIODS } from '@/lib/periods';
 
 export function PeriodFilter({ value }: { value: string }) {
   const router = useRouter();

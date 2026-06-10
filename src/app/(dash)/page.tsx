@@ -16,7 +16,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { PeriodFilter, PERIODS } from '@/components/period-filter';
+import { PeriodFilter } from '@/components/period-filter';
+import { PERIODS } from '@/lib/periods';
 import { ResultsFunnel, type FunnelStage } from '@/components/results-funnel';
 import { CreditBadge, SiteBadge } from '@/components/badges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -3,7 +3,8 @@
  * Метрики рассылки/сделок — заглушки до email-gen/CRM (заполнятся сами).
  */
 import { PageHeader } from '@/components/page-header';
-import { PeriodFilter, PERIODS } from '@/components/period-filter';
+import { PeriodFilter } from '@/components/period-filter';
+import { PERIODS } from '@/lib/periods';
 import { ResultsFunnel, type FunnelStage } from '@/components/results-funnel';
 import { StatCard } from '@/components/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
