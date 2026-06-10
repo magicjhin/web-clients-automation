@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * leads-table.tsx — responsive leads list.
  *
