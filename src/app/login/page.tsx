@@ -1,14 +1,16 @@
 /**
- * login/page.tsx — password gate for the dashboard.
- *
- * Client component: posts password to /api/login, then redirects to /.
- * Shows inline error on failure.
+ * login/page.tsx — пароль-гейт кабинета.
+ * Клиентский: POST пароля на /api/login → редирект на /.
  */
-
 'use client';
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Lock } from 'lucide-react';
+import { Brand } from '@/components/brand';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,52 +43,44 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="grid min-h-svh place-items-center bg-sidebar px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-brand-700 tracking-tight">Leadgen LT</h1>
-          <p className="mt-1 text-sm text-gray-500">Панель управления</p>
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <Brand className="text-lg" />
+          <p className="text-sm text-sidebar-muted">B2B-лидогенерация · Литва</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4"
+          className="space-y-4 rounded-2xl border bg-card p-6 shadow-lg"
         >
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Пароль
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
-                         placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500
-                         focus:border-transparent transition"
-              placeholder="Введите пароль"
-              disabled={loading}
-            />
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Пароль</Label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Введите пароль"
+                disabled={loading}
+                className="pl-9"
+              />
+            </div>
           </div>
 
           {error && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-brand-600 text-white text-sm font-semibold
-                       py-2 px-4 hover:bg-brand-700 focus:outline-none focus:ring-2
-                       focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50
-                       disabled:cursor-not-allowed transition"
-          >
-            {loading ? 'Вход...' : 'Войти'}
-          </button>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Вход…' : 'Войти'}
+          </Button>
         </form>
       </div>
     </div>

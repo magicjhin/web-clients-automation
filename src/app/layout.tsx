@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 export const metadata: Metadata = {
-  title: 'Leadgen LT',
-  description: 'Lithuanian B2B Lead Generation Dashboard',
+  title: 'leads.webvibe',
+  description: 'B2B-лидогенерация · Литва',
 };
 
 export default function RootLayout({
@@ -12,8 +13,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="lt">
-      <body className="bg-gray-50 text-gray-900 antialiased">{children}</body>
+    <html lang="ru">
+      <body className="antialiased">
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

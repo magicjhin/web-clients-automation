@@ -34,8 +34,8 @@ export interface LeadFilters {
   has_website?: 'yes' | 'no';
   has_phone?: 'yes' | 'no';
   niche?: string; // evrk2_code starts-with
-  minRevenue?: number;
   q?: string; // name contains (case-insensitive)
+  review_status?: 'needs_review' | 'auto_approved' | 'manually_approved' | 'rejected';
   page?: number;
   pageSize?: number;
 }
@@ -155,6 +155,10 @@ export async function getLeads(filters: LeadFilters): Promise<LeadsResult> {
     },
   ];
 
+  if (filters.review_status) {
+    conditions.push({ review_status: filters.review_status });
+  }
+
   if (filters.has_website === 'yes') conditions.push({ has_website: true });
   if (filters.has_website === 'no') conditions.push({ has_website: false });
 
@@ -167,9 +171,8 @@ export async function getLeads(filters: LeadFilters): Promise<LeadsResult> {
     conditions.push({ phone: null, mobile: null });
   }
 
-  if (filters.minRevenue != null) {
-    conditions.push({ revenue: { gte: new Prisma.Decimal(filters.minRevenue) } });
-  }
+  // ВНИМАНИЕ: финансы (revenue/profit) — атрибут карточки, НЕ фильтр выдачи
+  // (CLAUDE.md). Поэтому фильтра по выручке здесь нет — только показ/сортировка.
 
   // Build company where clause
   const companyWhere: Prisma.CompanyWhereInput = {};
@@ -338,4 +341,94 @@ export async function getCompanyDetail(id: string): Promise<CompanyDetail | null
         }
       : null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Очередь review (needs_review)
+// ---------------------------------------------------------------------------
+//
+// ФАЗА 1 (осознанно): агрегаты ниже считаются по всей базе БЕЗ subscriber_id —
+// активен один подписчик (Webvibe/админ видит всю базу), lead_delivery ещё пуст
+// (lead-select #14 не запускался), фильтрация по нему сейчас дала бы 0 лидов.
+// Тот же паттерн в getDashboardStats/getLeads. При активации мультитенанта (#12)
+// все эти запросы переводятся на контекст подписчика через lead_delivery.
+
+/** Сколько лидов ждут проверки человеком (GDPR-предохранитель Tier 3). */
+export async function getQueueCount(): Promise<number> {
+  return db.enrichment.count({
+    where: {
+      enrich_status: 'rekvizitai_done',
+      lead_branch: { in: ['A_bad_site', 'B_no_site'] },
+      credit_risk: { in: ['A', 'B', 'C'] },
+      review_status: 'needs_review',
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Ниши (топ EVRK-разделов по числу лидов)
+// ---------------------------------------------------------------------------
+
+export interface NicheStat {
+  code2: string; // 2-значный раздел EVRK
+  leads: number;
+  withSite: number;
+  noSite: number;
+}
+
+export async function getNicheStats(limit = 12): Promise<NicheStat[]> {
+  const rows = await db.$queryRaw<
+    { code2: string; leads: bigint; with_site: bigint; no_site: bigint }[]
+  >`
+    SELECT substring(c.evrk2_code from 1 for 2) AS code2,
+           count(*) AS leads,
+           count(*) FILTER (WHERE e.has_website) AS with_site,
+           count(*) FILTER (WHERE NOT e.has_website) AS no_site
+    FROM enrichment e
+    JOIN companies c ON c.id = e.company_id
+    WHERE e.enrich_status = 'rekvizitai_done'
+      AND e.lead_branch IN ('A_bad_site', 'B_no_site')
+      AND e.credit_risk IN ('A', 'B', 'C')
+    GROUP BY 1
+    ORDER BY leads DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((r) => ({
+    code2: r.code2,
+    leads: Number(r.leads),
+    withSite: Number(r.with_site),
+    noSite: Number(r.no_site),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Динамика базы — три ведра (active_lead / recheck_later / dead)
+// ---------------------------------------------------------------------------
+
+export interface BucketStats {
+  active_lead: number;
+  recheck_later: number;
+  dead: number;
+  total: number;
+}
+
+export async function getBucketStats(): Promise<BucketStats> {
+  const groups = await db.leadState.groupBy({
+    by: ['bucket'],
+    _count: { company_id: true },
+  });
+  const out: BucketStats = {
+    active_lead: 0,
+    recheck_later: 0,
+    dead: 0,
+    total: 0,
+  };
+  for (const g of groups) {
+    const n = g._count.company_id;
+    out.total += n;
+    if (g.bucket === 'active_lead') out.active_lead = n;
+    if (g.bucket === 'recheck_later') out.recheck_later = n;
+    if (g.bucket === 'dead') out.dead = n;
+  }
+  return out;
 }

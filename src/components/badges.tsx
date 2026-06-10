@@ -1,91 +1,69 @@
 /**
- * badges.tsx — Lead branch and credit risk badges for the dashboard.
+ * badges.tsx — статус-плашки для лидов.
  *
- * BranchBadge: A_bad_site = "Есть сайт" (НЕ «плохой» — аудит/PageSpeed ещё не делали,
- *              можем утверждать только факт наличия сайта), B_no_site = "Нет сайта"
- * CreditBadge: A = green, B = teal, C = amber
+ * SiteBadge: A_bad_site = «Есть сайт» (НЕ «плохой» — аудит/PageSpeed не делали),
+ *            B_no_site = «Нет сайта».
+ * CreditBadge: A/B/C — кредит-риск.
+ * ReviewBadge: статус ревью (очередь).
+ * PageSpeedBadge: оценка PageSpeed (когда появится).
  */
+import { Globe, GlobeLock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
-// No "use client" — these are pure presentational components, usable in RSC.
-
-interface BranchBadgeProps {
-  branch: 'A_bad_site' | 'B_no_site' | string;
-}
-
-export function BranchBadge({ branch }: BranchBadgeProps) {
+export function SiteBadge({ branch }: { branch: string }) {
   if (branch === 'A_bad_site') {
     return (
-      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+      <Badge variant="neutral" className="gap-1">
+        <Globe className="h-3 w-3" />
         Есть сайт
-      </span>
+      </Badge>
     );
   }
   if (branch === 'B_no_site') {
     return (
-      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-        B · Нет сайта
-      </span>
+      <Badge variant="brand" className="gap-1">
+        <GlobeLock className="h-3 w-3" />
+        Нет сайта
+      </Badge>
     );
   }
-  return (
-    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-      {branch}
-    </span>
-  );
+  return <Badge variant="outline">{branch}</Badge>;
 }
 
-interface CreditBadgeProps {
-  risk: 'A' | 'B' | 'C' | string | null;
-}
+const CREDIT_LABEL: Record<string, string> = {
+  A: 'минимальный риск',
+  B: 'низкий риск',
+  C: 'средний риск',
+};
 
-export function CreditBadge({ risk }: CreditBadgeProps) {
-  if (risk === 'A') {
-    return (
-      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-        A
-      </span>
-    );
-  }
-  if (risk === 'B') {
-    return (
-      <span className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-800">
-        B
-      </span>
-    );
-  }
-  if (risk === 'C') {
-    return (
-      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-        C
-      </span>
-    );
-  }
+export function CreditBadge({ risk }: { risk: string | null }) {
+  const variant =
+    risk === 'A' ? 'success' : risk === 'B' ? 'secondary' : risk === 'C' ? 'warning' : 'outline';
   return (
-    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+    <Badge variant={variant} title={risk ? CREDIT_LABEL[risk] : undefined}>
       {risk ?? '—'}
-    </span>
+    </Badge>
   );
 }
 
-interface PageSpeedBadgeProps {
-  score: number | null;
-  label?: string;
+const REVIEW: Record<string, { label: string; variant: 'warning' | 'success' | 'neutral' | 'destructive' }> = {
+  needs_review: { label: 'Ждёт проверки', variant: 'warning' },
+  auto_approved: { label: 'Авто-одобрен', variant: 'success' },
+  manually_approved: { label: 'Одобрен', variant: 'success' },
+  rejected: { label: 'Отклонён', variant: 'destructive' },
+};
+
+export function ReviewBadge({ status }: { status: string }) {
+  const cfg = REVIEW[status] ?? { label: status, variant: 'neutral' as const };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 
-export function PageSpeedBadge({ score, label }: PageSpeedBadgeProps) {
-  if (score == null) {
-    return <span className="text-gray-400 text-xs">—</span>;
-  }
-  const colorClass =
-    score >= 90
-      ? 'bg-green-100 text-green-800'
-      : score >= 50
-      ? 'bg-amber-100 text-amber-800'
-      : 'bg-red-100 text-red-800';
-
+export function PageSpeedBadge({ score, label }: { score: number | null; label?: string }) {
+  if (score == null) return <span className="text-xs text-muted-foreground">—</span>;
+  const variant = score >= 90 ? 'success' : score >= 50 ? 'warning' : 'destructive';
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}>
+    <Badge variant={variant}>
       {label ? `${label} ${score}` : score}
-    </span>
+    </Badge>
   );
 }
