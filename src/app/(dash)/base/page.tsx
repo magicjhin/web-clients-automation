@@ -75,7 +75,13 @@ export default async function BasePage({ searchParams }: PageProps) {
             <CardTitle>Кредит-риск</CardTitle>
           </CardHeader>
           <CardContent>
-            <CreditDonutChart a={stats.creditA} b={stats.creditB} c={stats.creditC} />
+            <CreditDonutChart
+              a={stats.creditA}
+              b={stats.creditB}
+              c={stats.creditC}
+              d={stats.creditD}
+              e={stats.creditE}
+            />
           </CardContent>
         </Card>
       </div>

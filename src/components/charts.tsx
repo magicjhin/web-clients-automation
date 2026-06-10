@@ -45,12 +45,26 @@ export function NicheBarChart({ data }: { data: { name: string; leads: number }[
 }
 
 /** Пончик: распределение кредит-риска A/B/C. */
-export function CreditDonutChart({ a, b, c }: { a: number; b: number; c: number }) {
+export function CreditDonutChart({
+  a,
+  b,
+  c,
+  d = 0,
+  e = 0,
+}: {
+  a: number;
+  b: number;
+  c: number;
+  d?: number;
+  e?: number;
+}) {
   const data = [
     { name: 'A — минимальный', value: a, fill: '#65a30d' },
     { name: 'B — низкий', value: b, fill: '#94a3b8' },
     { name: 'C — средний', value: c, fill: '#f59e0b' },
-  ];
+    { name: 'D — высокий', value: d, fill: '#ef4444' },
+    { name: 'E — наивысший', value: e, fill: '#b91c1c' },
+  ].filter((x) => x.value > 0);
   return (
     <ResponsiveContainer width="100%" height={200}>
       <PieChart>

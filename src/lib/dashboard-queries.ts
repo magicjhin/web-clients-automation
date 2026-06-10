@@ -33,6 +33,8 @@ export interface DashboardStats {
   creditA: number;
   creditB: number;
   creditC: number;
+  creditD: number;
+  creditE: number;
 }
 
 export interface LeadFilters {
@@ -91,9 +93,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     db.enrichment.groupBy({
       by: ['lead_branch', 'credit_risk', 'has_website'],
       where: {
-        enrich_status: 'rekvizitai_done',
+        // D/E добавлены в лиды (решение пользователя): archived_garbage = это D/E.
+        enrich_status: { in: ['rekvizitai_done', 'archived_garbage'] },
         lead_branch: { in: ['A_bad_site', 'B_no_site'] },
-        credit_risk: { in: ['A', 'B', 'C'] },
+        credit_risk: { in: ['A', 'B', 'C', 'D', 'E'] },
       },
       _count: { id: true },
     }),
@@ -107,6 +110,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   let creditA = 0;
   let creditB = 0;
   let creditC = 0;
+  let creditD = 0;
+  let creditE = 0;
 
   for (const g of leadGroups) {
     const n = g._count.id;
@@ -118,6 +123,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     if (g.credit_risk === 'A') creditA += n;
     if (g.credit_risk === 'B') creditB += n;
     if (g.credit_risk === 'C') creditC += n;
+    if (g.credit_risk === 'D') creditD += n;
+    if (g.credit_risk === 'E') creditE += n;
   }
 
   const enrichedPercent =
@@ -135,6 +142,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     creditA,
     creditB,
     creditC,
+    creditD,
+    creditE,
   };
 }
 
@@ -149,7 +158,7 @@ export async function getLeads(filters: LeadFilters): Promise<LeadsResult> {
 
   // Build all conditions into an AND array — avoids property conflicts.
   const conditions: Prisma.EnrichmentWhereInput[] = [
-    { enrich_status: 'rekvizitai_done' },
+    { enrich_status: { in: ['rekvizitai_done', 'archived_garbage'] } },
     {
       lead_branch: filters.branch
         ? filters.branch
@@ -158,7 +167,7 @@ export async function getLeads(filters: LeadFilters): Promise<LeadsResult> {
     {
       credit_risk: filters.credit_risk
         ? filters.credit_risk
-        : { in: ['A', 'B', 'C'] },
+        : { in: ['A', 'B', 'C', 'D', 'E'] },
     },
   ];
 
@@ -390,9 +399,9 @@ export async function getDeliveredLeads(quota = DAILY_LEAD_QUOTA): Promise<LeadR
 export async function getQueueCount(): Promise<number> {
   return db.enrichment.count({
     where: {
-      enrich_status: 'rekvizitai_done',
+      enrich_status: { in: ['rekvizitai_done', 'archived_garbage'] },
       lead_branch: { in: ['A_bad_site', 'B_no_site'] },
-      credit_risk: { in: ['A', 'B', 'C'] },
+      credit_risk: { in: ['A', 'B', 'C', 'D', 'E'] },
       review_status: 'needs_review',
     },
   });
@@ -466,9 +475,9 @@ export async function getNicheStats(limit = 12): Promise<NicheStat[]> {
            count(*) FILTER (WHERE NOT e.has_website) AS no_site
     FROM enrichment e
     JOIN companies c ON c.id = e.company_id
-    WHERE e.enrich_status = 'rekvizitai_done'
+    WHERE e.enrich_status IN ('rekvizitai_done', 'archived_garbage')
       AND e.lead_branch IN ('A_bad_site', 'B_no_site')
-      AND e.credit_risk IN ('A', 'B', 'C')
+      AND e.credit_risk IN ('A', 'B', 'C', 'D', 'E')
     GROUP BY 1
     ORDER BY leads DESC
     LIMIT ${limit}

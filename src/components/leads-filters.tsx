@@ -78,10 +78,12 @@ export function LeadsFilters({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>A / B / C</SelectItem>
+            <SelectItem value={ALL}>Любой риск</SelectItem>
             <SelectItem value="A">A — минимальный</SelectItem>
             <SelectItem value="B">B — низкий</SelectItem>
             <SelectItem value="C">C — средний</SelectItem>
+            <SelectItem value="D">D — высокий</SelectItem>
+            <SelectItem value="E">E — наивысший</SelectItem>
           </SelectContent>
         </Select>
       </Field>

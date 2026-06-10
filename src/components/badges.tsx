@@ -34,11 +34,21 @@ const CREDIT_LABEL: Record<string, string> = {
   A: 'минимальный риск',
   B: 'низкий риск',
   C: 'средний риск',
+  D: 'высокий риск',
+  E: 'наивысший риск',
 };
 
 export function CreditBadge({ risk }: { risk: string | null }) {
   const variant =
-    risk === 'A' ? 'success' : risk === 'B' ? 'secondary' : risk === 'C' ? 'warning' : 'outline';
+    risk === 'A'
+      ? 'success'
+      : risk === 'B'
+        ? 'secondary'
+        : risk === 'C'
+          ? 'warning'
+          : risk === 'D' || risk === 'E'
+            ? 'destructive'
+            : 'outline';
   return (
     <Badge variant={variant} title={risk ? CREDIT_LABEL[risk] : undefined}>
       {risk ?? '—'}
