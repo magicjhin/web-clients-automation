@@ -20,7 +20,7 @@
 - 📋 **8. Отправка писем (мой домен webvibe.lt)** (backend-pipeline) — Resend + верификация домена сразу (прогрев репутации). ⚠️ нужен RESEND_API_KEY + верификация домена + GDPR-подтверждение.
 - 📋 **9. Интеграция с CRM** (backend-pipeline) — API/webhooks: лид→CRM при отправке, статусы, won по оплате, обратные сигналы, статистика воронки
 - ✅ **10. PWA + push** (frontend-dev + backend-pipeline) — **готов** (2026-06-10, PR #1): manifest+SW+иконки, установка на Домой, тоггл уведомлений, VAPID, модель `PushSubscription`, API `/api/push/*`. Триггер пуша = «аудит готов» (хук в audit-gen). ⚠️ на VPS нужны валидные VAPID_PUBLIC_KEY/PRIVATE_KEY.
-- 📋 **11. `recheck`** (backend-pipeline) — динамика базы + длинная пауза отказникам (можно позже)
+- ✅ **11. `recheck`** (backend-pipeline) — **готов** (2026-06-10, PR #1): воркер расставляет компании по вёдрам `LeadState` (active_lead = лид A/B/C как в дашборде / dead = RC-неактивна или archived_garbage / recheck_later = прочее обогащённое), курсорный обход, cron `30 4 * * *`. Безопасно: пишет только `lead_state` + `enrichment.recheck_at` (+90д для recheck_later), `enrich_status` НЕ трогает. Ре-энрич по due recheck_at — TODO фазы 2.
 
 > К демо с клиентом: пп. 1–2, 4–6 на одной нише (стройка/недвижимость). Обогащение в фоне, дашборд параллельно.
 > Отправка/CRM/PWA/push/recheck — после, к демо не критичны.
