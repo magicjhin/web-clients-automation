@@ -76,9 +76,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const [totalCompanies, enrichedCount, leadGroups] = await Promise.all([
     db.company.count(),
 
-    db.enrichment.count({
-      where: { enrich_status: 'rekvizitai_done' },
-    }),
+    // «Обогащено» = ВСЕ компании, по которым отработал enrich (и лиды, и отсев D/E).
+    // rekvizitai_done + archived_garbage. Раньше считались только rekvizitai_done —
+    // показывало ~77%, хотя база обогащена на 100%.
+    db.enrichment.count(),
 
     db.enrichment.groupBy({
       by: ['lead_branch', 'credit_risk', 'has_website'],

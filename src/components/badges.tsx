@@ -1,7 +1,8 @@
 /**
  * badges.tsx — Lead branch and credit risk badges for the dashboard.
  *
- * BranchBadge: A_bad_site = amber "Плохой сайт", B_no_site = blue "Нет сайта"
+ * BranchBadge: A_bad_site = "Есть сайт" (НЕ «плохой» — аудит/PageSpeed ещё не делали,
+ *              можем утверждать только факт наличия сайта), B_no_site = "Нет сайта"
  * CreditBadge: A = green, B = teal, C = amber
  */
 
@@ -14,8 +15,8 @@ interface BranchBadgeProps {
 export function BranchBadge({ branch }: BranchBadgeProps) {
   if (branch === 'A_bad_site') {
     return (
-      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-        A · Плохой сайт
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+        Есть сайт
       </span>
     );
   }

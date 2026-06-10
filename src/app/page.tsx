@@ -78,12 +78,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               accent="green"
             />
             <StatCard
-              label="A · Плохой сайт"
+              label="Есть сайт"
               value={formatNumber(stats.leadsABadSite)}
-              accent="amber"
             />
             <StatCard
-              label="B · Нет сайта"
+              label="Нет сайта"
               value={formatNumber(stats.leadsBNoSite)}
               accent="blue"
             />
