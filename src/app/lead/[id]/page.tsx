@@ -159,7 +159,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
                   Проблемы сайта
                 </p>
                 <ul className="space-y-1.5">
-                  {(e.audit_issues as AuditIssue[]).map((issue, i) => (
+                  {(e.audit_issues as unknown as AuditIssue[]).map((issue, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <SeverityDot severity={issue.severity} />
                       <span className="text-gray-700">
