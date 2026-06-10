@@ -28,6 +28,11 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          # next build на VPS долгий — дефолтный command_timeout 10m обрывал SSH
+          # посреди сборки (HEAD уже reset, контейнер не подменён → поллер потом
+          # пропускал «HEAD==origin»). 30m с запасом. После переезда UI на Vercel
+          # сборка станет лёгкой (только API) и это станет неактуально.
+          command_timeout: 30m
           script: |
             set -e
             /usr/local/bin/leadgen-deploy
