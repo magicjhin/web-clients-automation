@@ -28,9 +28,9 @@ export default async function QueuePage({ searchParams }: PageProps) {
         subtitle={`${formatNumber(result.total)} лидов ждут подтверждения человеком`}
       />
 
-      <Card className="mb-4 border-lime-200 bg-lime-50/60">
+      <Card className="mb-4 border-amber-200 bg-amber-50/60">
         <CardContent className="flex items-start gap-3 py-4">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-foreground text-lime-300">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-foreground text-amber-400">
             <ShieldCheck className="h-5 w-5" />
           </span>
           <p className="text-sm text-foreground/80">

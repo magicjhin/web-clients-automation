@@ -35,7 +35,7 @@ export default async function NichesPage() {
                 <p className="text-sm font-medium">{evrkName(n.code2)}</p>
                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                   <div
-                    className="h-full rounded-full bg-lime-400"
+                    className="h-full rounded-full bg-amber-400"
                     style={{ width: `${(n.leads / max) * 100}%` }}
                   />
                 </div>

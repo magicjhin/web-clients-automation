@@ -40,7 +40,7 @@ export default function SettingsPage() {
             <ul className="space-y-2 text-sm">
               {TIER4.map((f) => (
                 <li key={f} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-lime-600" />
+                  <Check className="h-4 w-4 text-amber-600" />
                   {f}
                 </li>
               ))}

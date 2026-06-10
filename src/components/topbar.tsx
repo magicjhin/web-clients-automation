@@ -69,7 +69,7 @@ export function Topbar() {
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-0.5 pr-2 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-black text-lime-300">W</AvatarFallback>
+              <AvatarFallback className="bg-black text-amber-400">W</AvatarFallback>
             </Avatar>
             <span className="hidden text-sm font-medium sm:block">Webvibe</span>
           </DropdownMenuTrigger>

@@ -22,8 +22,8 @@ export function Brand({
         className={cn(
           'grid h-6 w-6 place-items-center rounded-md text-sm font-bold',
           tone === 'light'
-            ? 'bg-lime-300 text-black'
-            : 'bg-black text-lime-300'
+            ? 'bg-amber-400 text-black'
+            : 'bg-black text-amber-400'
         )}
         aria-hidden
       >

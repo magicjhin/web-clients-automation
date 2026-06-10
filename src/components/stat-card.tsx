@@ -46,7 +46,7 @@ export function StatCard({
             className={cn(
               'grid h-8 w-8 place-items-center rounded-lg',
               accent
-                ? 'bg-lime-300 text-black'
+                ? 'bg-amber-400 text-black'
                 : dark
                   ? 'bg-white/10 text-background'
                   : 'bg-secondary text-foreground'
@@ -64,7 +64,7 @@ export function StatCard({
           <span
             className={cn(
               'inline-flex items-center gap-0.5 text-xs font-medium',
-              dark ? 'text-lime-300' : 'text-muted-foreground'
+              dark ? 'text-amber-400' : 'text-muted-foreground'
             )}
           >
             {accent && <ArrowUpRight className="h-3 w-3" />}

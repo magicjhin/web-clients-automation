@@ -365,6 +365,16 @@ export async function getQueueCount(): Promise<number> {
   });
 }
 
+/**
+ * Сколько компаний обработано (обогащено) за период.
+ * since=null → за всё время. Time-aware метрика для воронки результатов.
+ */
+export async function getProcessedSince(since: Date | null): Promise<number> {
+  return db.enrichment.count({
+    where: since ? { enriched_at: { gte: since } } : {},
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Ниши (топ EVRK-разделов по числу лидов)
 // ---------------------------------------------------------------------------

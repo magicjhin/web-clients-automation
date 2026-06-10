@@ -1,33 +1,61 @@
 /**
- * Обзор — KPI + распределения + свежие лиды. Server component, читает БД напрямую.
+ * Обзор — отчёт по результативности.
+ * Воронка результатов (Обработано→Лиды→Отправлено→Отвечено→Сделки),
+ * напоминания «что сделать / кому позвонить», сводка базы, свежие лиды.
+ * Метрики рассылки/сделок — заглушки «скоро» (email-gen #15, CRM #17 ещё не построены),
+ * заполнятся автоматически, когда появятся данные.
  */
 import Link from 'next/link';
-import { Database, Sparkles, Users, Inbox, ArrowRight } from 'lucide-react';
+import {
+  Phone,
+  Inbox,
+  Database,
+  Sparkles,
+  ArrowRight,
+  ListChecks,
+  ChevronRight,
+} from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { StatCard } from '@/components/stat-card';
+import { PeriodFilter, PERIODS } from '@/components/period-filter';
+import { ResultsFunnel, type FunnelStage } from '@/components/results-funnel';
 import { CreditBadge, SiteBadge } from '@/components/badges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { NicheBarChart, CreditDonutChart } from '@/components/charts';
 import {
   getDashboardStats,
-  getNicheStats,
   getQueueCount,
+  getProcessedSince,
   getLeads,
 } from '@/lib/dashboard-queries';
 import { formatNumber, formatCurrency, evrkName } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
-export default async function OverviewPage() {
-  const [stats, niches, queue, recent] = await Promise.all([
+interface PageProps {
+  searchParams: Record<string, string | string[] | undefined>;
+}
+
+export default async function OverviewPage({ searchParams }: PageProps) {
+  const rawPeriod = searchParams.period;
+  const periodValue = (Array.isArray(rawPeriod) ? rawPeriod[0] : rawPeriod) ?? 'all';
+  const period = PERIODS.find((p) => p.value === periodValue) ?? PERIODS[0];
+  const since = period.days ? new Date(Date.now() - period.days * 86400000) : null;
+
+  const [stats, queue, processed, callLeads, recent] = await Promise.all([
     getDashboardStats(),
-    getNicheStats(7),
     getQueueCount(),
+    getProcessedSince(since),
+    getLeads({ has_phone: 'yes', pageSize: 4 }),
     getLeads({ pageSize: 6 }),
   ]);
 
-  const nicheData = niches.map((n) => ({ name: evrkName(n.code2), leads: n.leads }));
+  const funnel: FunnelStage[] = [
+    { label: 'Обработано', value: processed, live: true },
+    { label: 'Лиды (A/B/C)', value: stats.leadsTotal, live: true },
+    { label: 'Отправлено', value: null, live: false },
+    { label: 'Отвечено', value: null, live: false },
+    { label: 'Сделки', value: null, live: false },
+  ];
 
   return (
     <>
@@ -40,81 +68,120 @@ export default async function OverviewPage() {
             </span>
           </>
         }
-        subtitle="Сводка по базе и лидам на сегодня"
-        actions={
-          <Button asChild>
-            <Link href="/leads">
-              Все лиды
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        }
+        subtitle="Результативность и задачи на сегодня"
+        actions={<PeriodFilter value={periodValue} />}
       />
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          label="Компаний в базе"
-          value={formatNumber(stats.totalCompanies)}
-          icon={Database}
-        />
-        <StatCard
-          label="Обогащено"
-          value={`${stats.enrichedPercent}%`}
-          sub={formatNumber(stats.enrichedCount)}
-          icon={Sparkles}
-          accent
-        />
-        <StatCard
-          label="Лиды"
-          value={formatNumber(stats.leadsTotal)}
-          sub="A / B / C"
-          icon={Users}
-          tone="dark"
-        />
-        <StatCard
-          label="Ждут проверки"
-          value={formatNumber(queue)}
-          icon={Inbox}
-        />
-      </div>
+      {/* Воронка результатов */}
+      <Card className="mb-4">
+        <CardHeader className="!flex-row items-center justify-between">
+          <CardTitle>Воронка результатов</CardTitle>
+          <span className="text-sm text-muted-foreground">{period.label.toLowerCase()}</span>
+        </CardHeader>
+        <CardContent>
+          <ResultsFunnel stages={funnel} />
+          <p className="mt-3 text-xs text-muted-foreground">
+            «Отправлено / Отвечено / Сделки» появятся с генерацией писем и CRM — структура
+            готова, цифры заполнятся автоматически.
+          </p>
+        </CardContent>
+      </Card>
 
-      {/* Распределения */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Напоминания */}
         <Card className="lg:col-span-2">
           <CardHeader className="!flex-row items-center justify-between">
-            <CardTitle>Топ ниш по лидам</CardTitle>
-            <Link href="/niches" className="text-sm text-brand-700 hover:underline">
-              Все ниши
-            </Link>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5" />
+              Что сделать
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            {nicheData.length ? (
-              <NicheBarChart data={nicheData} />
-            ) : (
-              <p className="py-10 text-center text-sm text-muted-foreground">Нет данных</p>
+          <CardContent className="space-y-4">
+            {queue > 0 && (
+              <Link
+                href="/queue"
+                className="flex items-center gap-3 rounded-xl border bg-amber-50/70 p-3 transition-colors hover:bg-amber-50"
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-foreground text-amber-400">
+                  <Inbox className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">Проверить лиды в очереди</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatNumber(queue)} ждут подтверждения
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
             )}
+
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Phone className="h-3.5 w-3.5" />
+                Позвонить
+              </p>
+              <ul className="divide-y rounded-xl border">
+                {callLeads.leads.map((lead) => {
+                  const phone = lead.phone ?? lead.mobile;
+                  return (
+                    <li
+                      key={lead.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2.5"
+                    >
+                      <Link href={`/leads/${lead.id}`} className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium hover:underline">{lead.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {lead.city ?? '—'} · {evrkName(lead.evrk2_code.slice(0, 2))}
+                        </p>
+                      </Link>
+                      {phone && (
+                        <a
+                          href={`tel:${phone.replace(/\s/g, '')}`}
+                          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-medium hover:bg-accent"
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                          {phone}
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Напоминания о перезвонах и задачах по сделкам появятся с CRM.
+            </p>
           </CardContent>
         </Card>
 
+        {/* Сводка базы */}
         <Card>
           <CardHeader>
-            <CardTitle>Кредит-риск</CardTitle>
+            <CardTitle className="text-base">Сводка базы</CardTitle>
           </CardHeader>
-          <CardContent>
-            <CreditDonutChart a={stats.creditA} b={stats.creditB} c={stats.creditC} />
-            <div className="mt-3 space-y-1.5 text-sm">
-              <Legend color="#65a30d" label="A — минимальный" value={stats.creditA} />
-              <Legend color="#94a3b8" label="B — низкий" value={stats.creditB} />
-              <Legend color="#f59e0b" label="C — средний" value={stats.creditC} />
-            </div>
+          <CardContent className="space-y-3">
+            <MiniStat icon={Database} label="Компаний в базе" value={formatNumber(stats.totalCompanies)} />
+            <MiniStat
+              icon={Sparkles}
+              label="Обогащено"
+              value={`${stats.enrichedPercent}%`}
+              sub={formatNumber(stats.enrichedCount)}
+            />
+            <MiniStat icon={Inbox} label="На проверке" value={formatNumber(queue)} />
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/leads">
+                Все лиды
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
 
       {/* Свежие лиды */}
       <Card className="mt-4">
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="!flex-row items-center justify-between">
           <CardTitle>Свежие лиды</CardTitle>
           <Link href="/leads" className="text-sm text-brand-700 hover:underline">
             Смотреть все
@@ -151,14 +218,27 @@ export default async function OverviewPage() {
   );
 }
 
-function Legend({ color, label, value }: { color: string; label: string; value: number }) {
+function MiniStat({
+  icon: Icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: typeof Database;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="flex items-center gap-2 text-muted-foreground">
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-        {label}
+    <div className="flex items-center gap-3">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary">
+        <Icon className="h-4 w-4" />
       </span>
-      <span className="tabular font-medium">{formatNumber(value)}</span>
+      <span className="flex-1 text-sm text-muted-foreground">{label}</span>
+      <span className="text-right">
+        <span className="tabular block font-semibold">{value}</span>
+        {sub && <span className="tabular block text-xs text-muted-foreground">{sub}</span>}
+      </span>
     </div>
   );
 }

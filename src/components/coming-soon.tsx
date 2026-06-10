@@ -19,7 +19,7 @@ export function ComingSoon({
 }) {
   return (
     <Card className="flex flex-col items-center gap-4 px-6 py-16 text-center">
-      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-foreground text-lime-300">
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-foreground text-amber-400">
         <Icon className="h-7 w-7" />
       </span>
       <div className="space-y-1.5">
@@ -33,7 +33,7 @@ export function ComingSoon({
         <ul className="mx-auto mt-2 grid max-w-md gap-2 text-left text-sm">
           {bullets.map((b) => (
             <li key={b} className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-lime-400" />
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
               <span className="text-muted-foreground">{b}</span>
             </li>
           ))}
