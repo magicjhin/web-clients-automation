@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { CreditBadge, SiteBadge, PageSpeedBadge } from '@/components/badges';
 import { LeadActionButton } from '@/components/lead-action-button';
 import { LeadNotes } from '@/components/lead-notes';
+import { LeadStatus } from '@/components/lead-status';
 import { getCompanyDetail } from '@/lib/dashboard-queries';
 import {
   formatCurrency,
@@ -67,9 +68,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
             <Sparkles className="h-4 w-4" />
             Обработка
           </CardTitle>
-          <Badge variant="outline" className="text-muted-foreground">
-            Не обработан
-          </Badge>
+          <LeadStatus />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
