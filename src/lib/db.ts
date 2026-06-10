@@ -15,6 +15,30 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
+/**
+ * Нормализуем DATABASE_URL для Neon (managed Postgres на Vercel):
+ * - pgbouncer=true для пулера (-pooler) — иначе Prisma падает «prepared statement already exists»;
+ * - sslmode=require (Neon только по TLS);
+ * - убираем channel_binding — ломает Rust-движок Prisma.
+ * Не-Neon хосты (внутренний Postgres VPS) НЕ трогаем — там без TLS.
+ */
+function normalizeDatabaseUrl(): void {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return;
+  try {
+    const u = new URL(raw);
+    if (!u.hostname.endsWith('neon.tech')) return;
+    u.searchParams.delete('channel_binding');
+    u.searchParams.set('sslmode', 'require');
+    if (u.hostname.includes('-pooler')) u.searchParams.set('pgbouncer', 'true');
+    process.env.DATABASE_URL = u.toString();
+  } catch {
+    // невалидный URL — оставляем как есть, Prisma сам отрапортует
+  }
+}
+
+normalizeDatabaseUrl();
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
