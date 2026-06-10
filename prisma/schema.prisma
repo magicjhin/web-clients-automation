@@ -168,8 +168,28 @@ model Subscriber {
   generated_contents     GeneratedContent[]
   lead_deliveries        LeadDelivery[]
   subscriptions          Subscription[]
+  push_subscriptions     PushSubscription[]
 
   @@map("subscribers")
+}
+
+/// Web Push подписки (PWA, фаза 1). Один subscriber может иметь несколько устройств.
+/// Используются для уведомлений (напр. «аудит готов»). VAPID-ключи — из env (src/lib/config).
+model PushSubscription {
+  id            String     @id @default(uuid()) @db.Uuid
+  subscriber_id String     @db.Uuid
+  /// Уникальный endpoint браузерного push-сервиса (ключ дедупликации устройства).
+  endpoint      String     @unique
+  /// Ключи шифрования из PushSubscription.getKey() (base64url).
+  p256dh        String
+  auth          String
+  /// User-Agent устройства (для справки/очистки старых подписок).
+  user_agent    String?
+  created_at    DateTime   @default(now())
+  subscriber    Subscriber @relation(fields: [subscriber_id], references: [id], onDelete: Cascade)
+
+  @@index([subscriber_id])
+  @@map("push_subscriptions")
 }
 
 /// Выдача лидов подписчику + встроенная дедупликация.
