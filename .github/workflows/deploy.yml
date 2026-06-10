@@ -1,7 +1,9 @@
 name: Deploy to VPS
 
 # Push в main → сервер сам подтягивает код и деплоит весь стек.
-# Секреты уже заведены в репозитории: VPS_HOST, VPS_USER, VPS_PASSWORD, VPS_PORT.
+# Авторизация по SSH-КЛЮЧУ (VPS отключил вход по паролю → password-метод даёт
+# "handshake failed ... [none password]"). Нужен секрет VPS_SSH_KEY = приватный ключ,
+# чей публичный лежит в ~/.ssh/authorized_keys на VPS. Прочие секреты: VPS_HOST, VPS_USER, VPS_PORT.
 on:
   push:
     branches: [main]
@@ -20,7 +22,7 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
