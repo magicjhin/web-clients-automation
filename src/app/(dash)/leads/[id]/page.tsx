@@ -88,7 +88,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                   </Button>
                 )}
                 <span className="text-sm text-muted-foreground">
-                  Сайта нет — аудит не нужен. Звонок / предложить сайт с нуля.
+                  Сайта нет → и почты нет. Связь только звонком (предложить сайт с нуля).
                 </span>
               </>
             ) : (
