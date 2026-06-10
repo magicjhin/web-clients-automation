@@ -7,14 +7,14 @@ import { Info } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { TodayLeads } from '@/components/today-leads';
 import { Card, CardContent } from '@/components/ui/card';
-import { getLeads } from '@/lib/dashboard-queries';
+import { getLeads, DAILY_LEAD_QUOTA } from '@/lib/dashboard-queries';
 import { formatNumber } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LeadsPage() {
   // Tier 4 ≈ 30 лидов/день. Пока берём срез пула как «выданные».
-  const result = await getLeads({ pageSize: 30 });
+  const result = await getLeads({ pageSize: DAILY_LEAD_QUOTA });
 
   return (
     <>

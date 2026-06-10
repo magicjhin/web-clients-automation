@@ -17,6 +17,7 @@ import {
   getDashboardStats,
   getProcessedSince,
   getLeads,
+  DAILY_LEAD_QUOTA,
 } from '@/lib/dashboard-queries';
 import { formatNumber, evrkName } from '@/lib/format';
 
@@ -84,7 +85,7 @@ export default async function CockpitPage({ searchParams }: PageProps) {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">Обработать выданные лиды</p>
               <p className="text-xs text-muted-foreground">
-                {formatNumber(today.total)} в работе · аудит + письмо в один клик
+                {formatNumber(DAILY_LEAD_QUOTA)} в работе · аудит + письмо в один клик
               </p>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
