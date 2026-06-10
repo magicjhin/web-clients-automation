@@ -12,7 +12,7 @@
 
 import Link from 'next/link';
 import { BranchBadge, CreditBadge } from '@/components/badges';
-import { formatCurrency, formatDomain } from '@/lib/format';
+import { formatCurrency, formatDomain, externalHref } from '@/lib/format';
 import type { LeadRow } from '@/lib/dashboard-queries';
 
 interface LeadsTableProps {
@@ -88,7 +88,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                   )}
                   {lead.website_url && (
                     <a
-                      href={lead.website_url}
+                      href={externalHref(lead.website_url) ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -157,7 +157,7 @@ export function LeadsTable({ leads }: LeadsTableProps) {
                 <td className="px-4 py-3">
                   {lead.website_url ? (
                     <a
-                      href={lead.website_url}
+                      href={externalHref(lead.website_url) ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline truncate max-w-[180px] block"

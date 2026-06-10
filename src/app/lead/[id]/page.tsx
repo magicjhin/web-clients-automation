@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { Header } from '@/components/header';
 import { BranchBadge, CreditBadge, PageSpeedBadge } from '@/components/badges';
 import { getCompanyDetail } from '@/lib/dashboard-queries';
-import { formatCurrency, formatDate, formatDomain, formatNumber } from '@/lib/format';
+import { formatCurrency, formatDate, formatDomain, formatNumber, externalHref } from '@/lib/format';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -118,7 +118,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
             <DetailItem label="Сайт">
               {e?.website_url ? (
                 <a
-                  href={e.website_url}
+                  href={externalHref(e.website_url) ?? '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline break-all"
@@ -257,7 +257,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
           )}
           {e?.website_url && (
             <a
-              href={e.website_url}
+              href={externalHref(e.website_url) ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold py-3 hover:bg-gray-50 transition"

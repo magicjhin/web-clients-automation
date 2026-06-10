@@ -35,11 +35,25 @@ export function formatDate(value: Date | string | null | undefined): string {
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+/**
+ * Ensure an external URL has a scheme, so the browser doesn't treat it as a
+ * relative path (e.g. "example.lt" → "https://example.lt", иначе открывается
+ * наш_домен/example.lt). Returns null for empty input.
+ */
+export function externalHref(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return 'https://' + trimmed.replace(/^\/+/, '');
+}
+
 /** Truncate a URL to show just the hostname. */
 export function formatDomain(url: string | null | undefined): string {
   if (!url) return '—';
+  const href = externalHref(url);
   try {
-    return new URL(url).hostname.replace(/^www\./, '');
+    return new URL(href as string).hostname.replace(/^www\./, '');
   } catch {
     return url;
   }
