@@ -20,6 +20,8 @@ import { db } from '../../src/lib/db';
 import { logger } from '../../src/lib/logger';
 import { config } from '../../src/lib/config';
 import { parseArgs } from '../_runner';
+import { sendPushToSubscriber } from '../../src/lib/push';
+import { getCurrentSubscriberId } from '../../src/lib/subscriber';
 import type { Prisma } from '@prisma/client';
 
 const log = logger.child({ module: 'audit-gen' });
@@ -223,6 +225,7 @@ async function processOne(
   enrichmentId: string,
   companyId: string,
   websiteUrl: string,
+  companyName: string,
   dryRun: boolean,
 ): Promise<'done' | 'failed'> {
   // Атомарный переход queued → running
@@ -276,6 +279,22 @@ async function processOne(
         audit_done_at: new Date(),
       },
     });
+
+    // Отправляем push-уведомление «аудит готов» — в try/catch,
+    // чтобы сбой пуша не ронял аудит.
+    try {
+      const subscriberId = await getCurrentSubscriberId();
+      await sendPushToSubscriber(subscriberId, {
+        title: 'Аудит готов',
+        body: companyName,
+        url: `/lead/${companyId}`,
+      });
+    } catch (pushErr) {
+      log.warn(
+        { enrichmentId, companyId, err: String(pushErr).slice(0, 200) },
+        'push notification failed (audit still marked done)',
+      );
+    }
   } else {
     log.info(
       { enrichmentId, mobileScore, desktopScore, auditIssues },
@@ -308,6 +327,9 @@ async function run(): Promise<void> {
       id: true,
       company_id: true,
       website_url: true,
+      company: {
+        select: { name: true },
+      },
     },
   });
 
@@ -330,7 +352,7 @@ async function run(): Promise<void> {
         // website_url guaranteed non-null by the query filter above
         const url = item.website_url!;
         try {
-          const result = await processOne(item.id, item.company_id, url, args.dryRun);
+          const result = await processOne(item.id, item.company_id, url, item.company.name, args.dryRun);
           if (result === 'done') done++;
           else failed++;
         } catch (err) {
