@@ -73,10 +73,32 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <LeadActionButton companyName={company.name} size="default" />
-            <span className="text-sm text-muted-foreground">
-              Аудит + письмо в один клик → попадёт в «Проверку»
-            </span>
+            {e?.lead_branch === 'B_no_site' ? (
+              <>
+                {phone ? (
+                  <Button asChild size="default">
+                    <a href={`tel:${phone.replace(/\s/g, '')}`}>
+                      <Phone className="h-4 w-4" />
+                      Позвонить
+                    </a>
+                  </Button>
+                ) : (
+                  <Button size="default" variant="outline" disabled>
+                    Нет телефона
+                  </Button>
+                )}
+                <span className="text-sm text-muted-foreground">
+                  Сайта нет — аудит не нужен. Звонок / предложить сайт с нуля.
+                </span>
+              </>
+            ) : (
+              <>
+                <LeadActionButton companyName={company.name} size="default" />
+                <span className="text-sm text-muted-foreground">
+                  Аудит + письмо в один клик → попадёт в «Проверку»
+                </span>
+              </>
+            )}
           </div>
           <Separator />
           <div>

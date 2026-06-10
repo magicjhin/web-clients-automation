@@ -350,6 +350,32 @@ export async function getCompanyDetail(id: string): Promise<CompanyDetail | null
   };
 }
 
+/**
+ * Выданные лиды на день: ~80% с сайтом (A_bad_site → «Обработать»/аудит),
+ * ~20% без сайта (B_no_site → «Позвонить», аудит не нужен).
+ * UI-first стенд-ин; с lead-select (#14) заменится выдачей из LeadDelivery.
+ */
+export async function getDeliveredLeads(quota = DAILY_LEAD_QUOTA): Promise<LeadRow[]> {
+  const withSiteN = Math.round(quota * 0.8);
+  const noSiteN = Math.max(0, quota - withSiteN);
+  const [withSite, noSite] = await Promise.all([
+    getLeads({ branch: 'A_bad_site', pageSize: withSiteN }),
+    getLeads({ branch: 'B_no_site', pageSize: noSiteN }),
+  ]);
+  // Чередуем, чтобы no-site не висели одной кучей в конце.
+  const out: LeadRow[] = [];
+  const a = withSite.leads;
+  const b = noSite.leads;
+  const ratio = b.length ? Math.ceil(a.length / b.length) : a.length + 1;
+  let bi = 0;
+  for (let i = 0; i < a.length; i++) {
+    out.push(a[i]);
+    if ((i + 1) % ratio === 0 && bi < b.length) out.push(b[bi++]);
+  }
+  while (bi < b.length) out.push(b[bi++]);
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Очередь review (needs_review)
 // ---------------------------------------------------------------------------

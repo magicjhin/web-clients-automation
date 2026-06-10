@@ -12,11 +12,9 @@ import { PeriodFilter } from '@/components/period-filter';
 import { AnalyticsCard, type Metric } from '@/components/analytics-card';
 import { TodayLeads } from '@/components/today-leads';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { resolvePeriod } from '@/lib/periods';
 import {
-  getDashboardStats,
-  getProcessedSince,
   getLeads,
+  getDeliveredLeads,
   DAILY_LEAD_QUOTA,
 } from '@/lib/dashboard-queries';
 import { formatNumber, evrkName } from '@/lib/format';
@@ -30,18 +28,17 @@ interface PageProps {
 export default async function CockpitPage({ searchParams }: PageProps) {
   const rawPeriod = searchParams.period;
   const periodValue = (Array.isArray(rawPeriod) ? rawPeriod[0] : rawPeriod) ?? 'all';
-  const period = resolvePeriod(periodValue);
-  const since = period.days ? new Date(Date.now() - period.days * 86400000) : null;
+  // Период пока только UI-контрол — метрики работы заглушки до подключения генерации/рассылки.
 
-  const [stats, processed, today, callLeads] = await Promise.all([
-    getDashboardStats(),
-    getProcessedSince(since),
-    getLeads({ pageSize: 8 }),
+  const [delivered, callLeads] = await Promise.all([
+    getDeliveredLeads(),
     getLeads({ has_phone: 'yes', pageSize: 3 }),
   ]);
 
+  // «Обработано» = лиды, которые Я обработал (позвонил / аудит+письмо отправлено),
+  // а НЕ все обогащённые компании. Пока 0 (работа не велась) → заглушки «—/скоро».
   const processing: Metric[] = [
-    { label: 'Обработано', value: processed, live: true },
+    { label: 'Обработано', value: null, live: false },
     { label: 'Писем выслано', value: null, live: false },
     { label: 'Аудитов', value: null, live: false },
   ];
@@ -144,7 +141,7 @@ export default async function CockpitPage({ searchParams }: PageProps) {
           </Link>
         </CardHeader>
         <CardContent className="px-0 pb-0">
-          <TodayLeads leads={today.leads} />
+          <TodayLeads leads={delivered.slice(0, 8)} />
         </CardContent>
       </Card>
     </>
