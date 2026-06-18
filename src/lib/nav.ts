@@ -20,9 +20,13 @@ import {
   Settings,
   type LucideIcon,
 } from 'lucide-react';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+
+/** Ключ подписи пункта в словаре (dict.nav[key]) — перевод берётся по нему. */
+export type NavKey = keyof Dictionary['nav'];
 
 export interface NavItem {
-  label: string;
+  key: NavKey;
   href: string;
   icon: LucideIcon;
   status?: 'soon';
@@ -31,14 +35,14 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { label: 'Обзор', href: '/', icon: LayoutDashboard, exact: true },
-  { label: 'Лиды', href: '/leads', icon: Users },
-  { label: 'Проверка', href: '/review', icon: ClipboardCheck },
-  { label: 'База', href: '/base', icon: Database },
-  { label: 'Аналитика', href: '/analytics', icon: BarChart3 },
-  { label: 'Письма', href: '/outreach', icon: Mail, status: 'soon' },
-  { label: 'CRM', href: '/crm', icon: KanbanSquare, status: 'soon' },
-  { label: 'Настройки', href: '/settings', icon: Settings },
+  { key: 'overview', href: '/', icon: LayoutDashboard, exact: true },
+  { key: 'leads', href: '/leads', icon: Users },
+  { key: 'review', href: '/review', icon: ClipboardCheck },
+  { key: 'base', href: '/base', icon: Database },
+  { key: 'analytics', href: '/analytics', icon: BarChart3 },
+  { key: 'outreach', href: '/outreach', icon: Mail, status: 'soon' },
+  { key: 'crm', href: '/crm', icon: KanbanSquare, status: 'soon' },
+  { key: 'settings', href: '/settings', icon: Settings },
 ];
 
 export function isActive(pathname: string, item: NavItem): boolean {

@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/lib/format';
+import { getDict } from '@/lib/i18n/server';
 
 export interface Metric {
   label: string;
@@ -20,17 +21,28 @@ export function AnalyticsCard({
   processing: Metric[];
   results: Metric[];
 }) {
+  const dict = getDict();
   return (
     <Card>
       <CardContent className="grid gap-6 p-5 lg:grid-cols-2">
-        <Block title="Обработка" metrics={processing} />
-        <Block title="Результаты" metrics={results} accent />
+        <Block title={dict.analyticsCard.processing} metrics={processing} soon={dict.common.soon} />
+        <Block title={dict.analyticsCard.results} metrics={results} soon={dict.common.soon} accent />
       </CardContent>
     </Card>
   );
 }
 
-function Block({ title, metrics, accent }: { title: string; metrics: Metric[]; accent?: boolean }) {
+function Block({
+  title,
+  metrics,
+  soon,
+  accent,
+}: {
+  title: string;
+  metrics: Metric[];
+  soon: string;
+  accent?: boolean;
+}) {
   return (
     <div>
       <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -43,7 +55,7 @@ function Block({ title, metrics, accent }: { title: string; metrics: Metric[]; a
               <span className="text-xs text-muted-foreground">{m.label}</span>
               {!m.live && (
                 <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                  скоро
+                  {soon}
                 </span>
               )}
             </div>

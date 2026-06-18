@@ -5,6 +5,8 @@ import { LeadActionButton } from '@/components/lead-action-button';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, evrkName } from '@/lib/format';
 import type { LeadRow } from '@/lib/dashboard-queries';
+import { getDict } from '@/lib/i18n/server';
+import { fmt } from '@/lib/i18n/config';
 
 /**
  * Список выданных лидов. Действие зависит от наличия сайта:
@@ -12,10 +14,11 @@ import type { LeadRow } from '@/lib/dashboard-queries';
  * - нет сайта (B_no_site) → «Позвонить» (аудит без сайта не делаем).
  */
 export function TodayLeads({ leads }: { leads: LeadRow[] }) {
+  const dict = getDict();
   if (leads.length === 0) {
     return (
       <p className="py-10 text-center text-sm text-muted-foreground">
-        На сегодня лидов нет.
+        {dict.cockpit.noLeadsToday}
       </p>
     );
   }
@@ -45,12 +48,12 @@ export function TodayLeads({ leads }: { leads: LeadRow[] }) {
                   <Button asChild size="sm">
                     <a href={`tel:${phone.replace(/\s/g, '')}`}>
                       <Phone className="h-4 w-4" />
-                      Позвонить
+                      {dict.cockpit.call}
                     </a>
                   </Button>
                 ) : (
                   <Button size="sm" variant="outline" disabled>
-                    Нет телефона
+                    {dict.cockpit.noPhone}
                   </Button>
                 )
               ) : (
@@ -59,7 +62,7 @@ export function TodayLeads({ leads }: { leads: LeadRow[] }) {
                     <a
                       href={`tel:${phone.replace(/\s/g, '')}`}
                       className="grid h-8 w-8 place-items-center rounded-lg bg-secondary hover:bg-accent"
-                      aria-label={`Позвонить ${lead.name}`}
+                      aria-label={fmt(dict.cockpit.callAria, { name: lead.name })}
                     >
                       <Phone className="h-4 w-4" />
                     </a>

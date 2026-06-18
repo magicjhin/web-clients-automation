@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Menu, LogOut } from 'lucide-react';
 import { Brand } from '@/components/brand';
 import { SidebarNav } from '@/components/sidebar-nav';
+import { LanguageSwitcher } from '@/components/language-switcher';
+import { useI18n } from '@/lib/i18n/provider';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -21,6 +23,7 @@ import {
  */
 export function Topbar() {
   const [open, setOpen] = useState(false);
+  const { dict } = useI18n();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur-md sm:px-6">
@@ -28,7 +31,7 @@ export function Topbar() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
           className="grid h-9 w-9 place-items-center rounded-lg text-foreground hover:bg-accent lg:hidden"
-          aria-label="Открыть меню"
+          aria-label={dict.common.openMenu}
         >
           <Menu className="h-5 w-5" />
         </SheetTrigger>
@@ -47,6 +50,7 @@ export function Topbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <LanguageSwitcher />
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-0.5 pr-2 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">
             <Avatar className="h-8 w-8">
@@ -58,12 +62,12 @@ export function Topbar() {
             <DropdownMenuLabel>Webvibe · Tier 4</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <a href="/settings">Настройки</a>
+              <a href="/settings">{dict.common.settings}</a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a href="/api/logout" className="text-destructive focus:text-destructive">
                 <LogOut className="h-4 w-4" />
-                Выйти
+                {dict.common.logout}
               </a>
             </DropdownMenuItem>
           </DropdownMenuContent>

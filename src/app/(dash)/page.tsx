@@ -18,6 +18,8 @@ import {
   DAILY_LEAD_QUOTA,
 } from '@/lib/dashboard-queries';
 import { formatNumber, evrkName } from '@/lib/format';
+import { getDict } from '@/lib/i18n/server';
+import { fmt } from '@/lib/i18n/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +28,7 @@ interface PageProps {
 }
 
 export default async function CockpitPage({ searchParams }: PageProps) {
+  const dict = getDict();
   const rawPeriod = searchParams.period;
   const periodValue = (Array.isArray(rawPeriod) ? rawPeriod[0] : rawPeriod) ?? 'all';
   // Период пока только UI-контрол — метрики работы заглушки до подключения генерации/рассылки.
@@ -38,14 +41,14 @@ export default async function CockpitPage({ searchParams }: PageProps) {
   // «Обработано» = лиды, которые Я обработал (позвонил / аудит+письмо отправлено),
   // а НЕ все обогащённые компании. Пока 0 (работа не велась) → заглушки «—/скоро».
   const processing: Metric[] = [
-    { label: 'Обработано', value: null, live: false },
-    { label: 'Писем выслано', value: null, live: false },
-    { label: 'Аудитов', value: null, live: false },
+    { label: dict.analyticsCard.processed, value: null, live: false },
+    { label: dict.analyticsCard.emailsSent, value: null, live: false },
+    { label: dict.analyticsCard.audits, value: null, live: false },
   ];
   const results: Metric[] = [
-    { label: 'Ответили', value: null, live: false },
-    { label: 'Не ответили', value: null, live: false },
-    { label: 'Сделки', value: null, live: false },
+    { label: dict.analyticsCard.replied, value: null, live: false },
+    { label: dict.analyticsCard.notReplied, value: null, live: false },
+    { label: dict.analyticsCard.deals, value: null, live: false },
   ];
 
   return (
@@ -53,13 +56,13 @@ export default async function CockpitPage({ searchParams }: PageProps) {
       <PageHeader
         title={
           <>
-            С возвращением{' '}
+            {dict.cockpit.welcomeBack}{' '}
             <span className="inline-block" aria-hidden>
               👋
             </span>
           </>
         }
-        subtitle="Что сделать сегодня и результативность"
+        subtitle={dict.cockpit.subtitle}
         actions={<PeriodFilter value={periodValue} />}
       />
 
@@ -68,7 +71,7 @@ export default async function CockpitPage({ searchParams }: PageProps) {
         <CardHeader className="!flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <ListChecks className="h-5 w-5" />
-            Что сделать
+            {dict.cockpit.todo}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -80,9 +83,11 @@ export default async function CockpitPage({ searchParams }: PageProps) {
               <Sparkles className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">Обработать выданные лиды</p>
+              <p className="text-sm font-medium">{dict.cockpit.processLeads}</p>
               <p className="text-xs text-muted-foreground">
-                {formatNumber(DAILY_LEAD_QUOTA)} в работе · аудит + письмо в один клик
+                {fmt(dict.cockpit.processLeadsHint, {
+                  count: formatNumber(DAILY_LEAD_QUOTA),
+                })}
               </p>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -91,7 +96,7 @@ export default async function CockpitPage({ searchParams }: PageProps) {
           <div>
             <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               <Phone className="h-3.5 w-3.5" />
-              Позвонить
+              {dict.cockpit.call}
             </p>
             <ul className="divide-y rounded-xl border">
               {callLeads.leads.map((lead) => {
@@ -119,7 +124,7 @@ export default async function CockpitPage({ searchParams }: PageProps) {
             </ul>
           </div>
           <p className="text-xs text-muted-foreground">
-            Напоминания о перезвонах и задачах по сделкам появятся с CRM.
+            {dict.cockpit.remindersHint}
           </p>
         </CardContent>
       </Card>
@@ -128,16 +133,16 @@ export default async function CockpitPage({ searchParams }: PageProps) {
       <div className="mb-4">
         <AnalyticsCard processing={processing} results={results} />
         <p className="mt-2 px-1 text-xs text-muted-foreground">
-          «Писем / Аудитов / Ответы / Сделки» заполнятся с подключением генерации (Claude + PageSpeed) и рассылки.
+          {dict.cockpit.periodNote}
         </p>
       </div>
 
       {/* Сегодняшние лиды */}
       <Card>
         <CardHeader className="!flex-row items-center justify-between">
-          <CardTitle>Сегодняшние лиды</CardTitle>
+          <CardTitle>{dict.cockpit.todayLeads}</CardTitle>
           <Link href="/leads" className="text-sm text-brand-700 hover:underline">
-            Все выданные
+            {dict.cockpit.allDelivered}
           </Link>
         </CardHeader>
         <CardContent className="px-0 pb-0">

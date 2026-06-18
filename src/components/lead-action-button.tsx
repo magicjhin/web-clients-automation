@@ -18,12 +18,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-
-const STEPS = [
-  { icon: Gauge, label: 'Аудит сайта (PageSpeed + проблемы)' },
-  { icon: FileText, label: 'Отчёт по аудиту' },
-  { icon: Mail, label: 'Письмо с предложением (литовский)' },
-];
+import { useI18n } from '@/lib/i18n/provider';
+import { fmt } from '@/lib/i18n/config';
 
 export function LeadActionButton({
   companyName,
@@ -33,26 +29,32 @@ export function LeadActionButton({
   size?: 'sm' | 'default';
 }) {
   const [open, setOpen] = useState(false);
+  const { dict } = useI18n();
+  const steps = [
+    { icon: Gauge, label: dict.leadAction.step1 },
+    { icon: FileText, label: dict.leadAction.step2 },
+    { icon: Mail, label: dict.leadAction.step3 },
+  ];
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size={size}>
           <Sparkles className="h-4 w-4" />
-          Обработать
+          {dict.leadAction.process}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Обработать лид
-            <Badge variant="brand">скоро</Badge>
+            {dict.leadAction.processLead}
+            <Badge variant="brand">{dict.common.soon}</Badge>
           </DialogTitle>
           <DialogDescription>
-            Одна кнопка для «{companyName}» запустит всю цепочку:
+            {fmt(dict.leadAction.dialogIntro, { company: companyName })}
           </DialogDescription>
         </DialogHeader>
         <ol className="space-y-2.5">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <li key={s.label} className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-foreground text-amber-400">
                 <s.icon className="h-4 w-4" />
@@ -62,12 +64,11 @@ export function LeadActionButton({
           ))}
         </ol>
         <p className="text-xs text-muted-foreground">
-          Готовые аудит и письмо попадут в раздел «Проверка» — там подтверждаешь отправку.
-          Запуск подключится с генерацией (Claude + PageSpeed).
+          {dict.leadAction.resultNote}
         </p>
         <Button disabled className="w-full">
           <Check className="h-4 w-4" />
-          Запустить (подключится скоро)
+          {dict.leadAction.run}
         </Button>
       </DialogContent>
     </Dialog>

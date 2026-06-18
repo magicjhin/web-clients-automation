@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { navItems, isActive } from '@/lib/nav';
+import { useI18n } from '@/lib/i18n/provider';
 import { cn } from '@/lib/utils';
 
 /**
@@ -11,9 +12,10 @@ import { cn } from '@/lib/utils';
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { dict } = useI18n();
 
   return (
-    <nav className="flex flex-col gap-1" aria-label="Основная навигация">
+    <nav className="flex flex-col gap-1" aria-label={dict.common.mainNav}>
       {navItems.map((item) => {
         const active = isActive(pathname, item);
         const Icon = item.icon;
@@ -31,7 +33,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             )}
           >
             <Icon className="h-[18px] w-[18px] shrink-0" />
-            <span className="flex-1">{item.label}</span>
+            <span className="flex-1">{dict.nav[item.key]}</span>
             {item.status === 'soon' && (
               <span
                 className={cn(
@@ -41,7 +43,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     : 'bg-white/10 text-sidebar-muted'
                 )}
               >
-                скоро
+                {dict.common.soon}
               </span>
             )}
           </Link>
