@@ -37,7 +37,7 @@ export function TodayLeads({ leads }: { leads: LeadRow[] }) {
                 {lead.name}
               </Link>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {evrkName(lead.evrk2_code.slice(0, 2))} · {lead.city ?? '—'} · {formatCurrency(lead.revenue)}
+                {evrkName(lead.evrk2_code.slice(0, 2), dict.evrk)} · {lead.city ?? '—'} · {formatCurrency(lead.revenue)}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">

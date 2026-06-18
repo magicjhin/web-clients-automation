@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NicheBarChart, CreditDonutChart } from '@/components/charts';
 import { getDashboardStats, getNicheStats } from '@/lib/dashboard-queries';
 import { formatNumber, evrkName } from '@/lib/format';
+import { getDict } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,59 +24,60 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const periodValue = (Array.isArray(rawPeriod) ? rawPeriod[0] : rawPeriod) ?? 'all';
 
   const [stats, niches] = await Promise.all([getDashboardStats(), getNicheStats(10)]);
-  const nicheData = niches.map((n) => ({ name: evrkName(n.code2), leads: n.leads }));
+  const dict = getDict();
+  const nicheData = niches.map((n) => ({ name: evrkName(n.code2, dict.evrk), leads: n.leads }));
 
   const processing: Metric[] = [
-    { label: 'Обработано', value: null, live: false },
-    { label: 'Писем выслано', value: null, live: false },
-    { label: 'Аудитов', value: null, live: false },
+    { label: dict.analyticsCard.processed, value: null, live: false },
+    { label: dict.analyticsCard.emailsSent, value: null, live: false },
+    { label: dict.analyticsCard.audits, value: null, live: false },
   ];
   const results: Metric[] = [
-    { label: 'Ответили', value: null, live: false },
-    { label: 'Не ответили', value: null, live: false },
-    { label: 'Сделки', value: null, live: false },
+    { label: dict.analyticsCard.replied, value: null, live: false },
+    { label: dict.analyticsCard.notReplied, value: null, live: false },
+    { label: dict.analyticsCard.deals, value: null, live: false },
   ];
 
   return (
     <>
       <PageHeader
-        title="Результативность"
-        subtitle="Что сделано и с каким результатом"
+        title={dict.analyticsPage.title}
+        subtitle={dict.analyticsPage.subtitle}
         actions={<PeriodFilter value={periodValue} />}
       />
 
       <AnalyticsCard processing={processing} results={results} />
       <p className="mb-8 mt-2 px-1 text-xs text-muted-foreground">
-        Метрики работы заполнятся с подключением генерации (Claude + PageSpeed) и рассылки (Resend).
+        {dict.analyticsPage.workNote}
       </p>
 
       {/* Срез базы — реальные числа пула, не «работа» */}
       <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        Срез базы
+        {dict.analyticsPage.sliceTitle}
       </h2>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Лиды (A/B/C)" value={formatNumber(stats.leadsTotal)} />
-        <StatCard label="С сайтом" value={formatNumber(stats.withWebsite)} />
-        <StatCard label="Без сайта" value={formatNumber(stats.withoutWebsite)} />
-        <StatCard label="Обогащено" value={`${stats.enrichedPercent}%`} sub={formatNumber(stats.enrichedCount)} />
+        <StatCard label={dict.analyticsPage.leadsABC} value={formatNumber(stats.leadsTotal)} />
+        <StatCard label={dict.analyticsPage.withSite} value={formatNumber(stats.withWebsite)} />
+        <StatCard label={dict.analyticsPage.withoutSite} value={formatNumber(stats.withoutWebsite)} />
+        <StatCard label={dict.analyticsPage.enriched} value={`${stats.enrichedPercent}%`} sub={formatNumber(stats.enrichedCount)} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Лиды по нишам</CardTitle>
+            <CardTitle>{dict.analyticsPage.nichesTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             {nicheData.length ? (
               <NicheBarChart data={nicheData} />
             ) : (
-              <p className="py-10 text-center text-sm text-muted-foreground">Нет данных</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">{dict.common.noData}</p>
             )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Кредит-риск</CardTitle>
+            <CardTitle>{dict.analyticsPage.creditTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <CreditDonutChart

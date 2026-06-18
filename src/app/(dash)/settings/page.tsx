@@ -6,39 +6,38 @@ import { Check } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getDict } from '@/lib/i18n/server';
 
-const TIER4 = [
-  'Лиды + статус сайта',
-  'Аудит сайта (PageSpeed)',
-  'Письмо + отправка (Resend)',
-  'CRM: лид → сделка → КП → договор → счёт',
-];
+export const dynamic = 'force-dynamic';
 
 export default function SettingsPage() {
+  const dict = getDict();
+  const s = dict.settings;
+  const tier4 = [s.feature1, s.feature2, s.feature3, s.feature4];
   return (
     <>
-      <PageHeader title="Настройки" subtitle="Профиль и параметры подписки" />
+      <PageHeader title={s.title} subtitle={s.subtitle} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Профиль</CardTitle>
+            <CardTitle className="text-base">{s.profile}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <Row label="Подписчик" value="Webvibe" />
-            <Row label="Email" value="aleksandr.kuc93@gmail.com" />
-            <Row label="Регион" value="Литва" />
+            <Row label={s.subscriber} value="Webvibe" />
+            <Row label={s.email} value="aleksandr.kuc93@gmail.com" />
+            <Row label={s.region} value={s.regionValue} />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="!flex-row items-center justify-between">
-            <CardTitle className="text-base">Тариф</CardTitle>
-            <Badge variant="default">Tier 4 · Максимум</Badge>
+            <CardTitle className="text-base">{s.tier}</CardTitle>
+            <Badge variant="default">{s.tierBadge}</Badge>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm">
-              {TIER4.map((f) => (
+              {tier4.map((f) => (
                 <li key={f} className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-amber-600" />
                   {f}
@@ -50,25 +49,22 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader className="!flex-row items-center justify-between">
-            <CardTitle className="text-base">Рассылка</CardTitle>
-            <Badge variant="brand">скоро</Badge>
+            <CardTitle className="text-base">{s.mailing}</CardTitle>
+            <Badge variant="brand">{dict.common.soon}</Badge>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Подключение Resend-домена и верификация — на этапе онбординга.</p>
-            <Row label="Resend-домен" value="—" />
+            <p>{s.mailingNote}</p>
+            <Row label={s.resendDomain} value="—" />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="!flex-row items-center justify-between">
-            <CardTitle className="text-base">Безопасность</CardTitle>
-            <Badge variant="brand">скоро</Badge>
+            <CardTitle className="text-base">{s.security}</CardTitle>
+            <Badge variant="brand">{dict.common.soon}</Badge>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              Сейчас вход по паролю-гейту. Полноценные аккаунты (Auth.js, 2FA /
-              Google) заменят его в фазе подписок.
-            </p>
+            <p>{s.securityNote}</p>
           </CardContent>
         </Card>
       </div>

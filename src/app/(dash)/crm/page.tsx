@@ -1,20 +1,20 @@
 import { KanbanSquare } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { ComingSoon } from '@/components/coming-soon';
+import { getDict } from '@/lib/i18n/server';
+
+export const dynamic = 'force-dynamic';
 
 export default function CrmPage() {
+  const c = getDict().crm;
   return (
     <>
-      <PageHeader title="CRM" subtitle="Тариф «Максимум» — сделки под ключ" />
+      <PageHeader title={c.headerTitle} subtitle={c.headerSubtitle} />
       <ComingSoon
         icon={KanbanSquare}
-        title="CRM-пайплайн"
-        description="Лид → сделка → коммерческое предложение → договор → счёт. Канбан-доска и история по каждому контакту."
-        bullets={[
-          'Канбан по стадиям сделки',
-          'КП, договоры и счета из карточки',
-          'История касаний и задач',
-        ]}
+        title={c.title}
+        description={c.description}
+        bullets={[c.bullet1, c.bullet2, c.bullet3]}
       />
     </>
   );

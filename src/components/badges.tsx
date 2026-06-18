@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * badges.tsx — статус-плашки для лидов.
  *
@@ -9,13 +11,15 @@
  */
 import { Globe, GlobeLock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useI18n } from '@/lib/i18n/provider';
 
 export function SiteBadge({ branch }: { branch: string }) {
+  const { dict } = useI18n();
   if (branch === 'A_bad_site') {
     return (
       <Badge variant="neutral" className="gap-1">
         <Globe className="h-3 w-3" />
-        Есть сайт
+        {dict.badges.hasSite}
       </Badge>
     );
   }
@@ -23,22 +27,22 @@ export function SiteBadge({ branch }: { branch: string }) {
     return (
       <Badge variant="brand" className="gap-1">
         <GlobeLock className="h-3 w-3" />
-        Нет сайта
+        {dict.badges.noSite}
       </Badge>
     );
   }
   return <Badge variant="outline">{branch}</Badge>;
 }
 
-const CREDIT_LABEL: Record<string, string> = {
-  A: 'минимальный риск',
-  B: 'низкий риск',
-  C: 'средний риск',
-  D: 'высокий риск',
-  E: 'наивысший риск',
-};
-
 export function CreditBadge({ risk }: { risk: string | null }) {
+  const { dict } = useI18n();
+  const labels: Record<string, string> = {
+    A: dict.badges.creditA,
+    B: dict.badges.creditB,
+    C: dict.badges.creditC,
+    D: dict.badges.creditD,
+    E: dict.badges.creditE,
+  };
   const variant =
     risk === 'A'
       ? 'success'
@@ -50,21 +54,21 @@ export function CreditBadge({ risk }: { risk: string | null }) {
             ? 'destructive'
             : 'outline';
   return (
-    <Badge variant={variant} title={risk ? CREDIT_LABEL[risk] : undefined}>
+    <Badge variant={variant} title={risk ? labels[risk] : undefined}>
       {risk ?? '—'}
     </Badge>
   );
 }
 
-const REVIEW: Record<string, { label: string; variant: 'warning' | 'success' | 'neutral' | 'destructive' }> = {
-  needs_review: { label: 'Ждёт проверки', variant: 'warning' },
-  auto_approved: { label: 'Авто-одобрен', variant: 'success' },
-  manually_approved: { label: 'Одобрен', variant: 'success' },
-  rejected: { label: 'Отклонён', variant: 'destructive' },
-};
-
 export function ReviewBadge({ status }: { status: string }) {
-  const cfg = REVIEW[status] ?? { label: status, variant: 'neutral' as const };
+  const { dict } = useI18n();
+  const map: Record<string, { label: string; variant: 'warning' | 'success' | 'neutral' | 'destructive' }> = {
+    needs_review: { label: dict.badges.reviewNeeds, variant: 'warning' },
+    auto_approved: { label: dict.badges.reviewAuto, variant: 'success' },
+    manually_approved: { label: dict.badges.reviewManual, variant: 'success' },
+    rejected: { label: dict.badges.reviewRejected, variant: 'destructive' },
+  };
+  const cfg = map[status] ?? { label: status, variant: 'neutral' as const };
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 

@@ -9,18 +9,21 @@ import { TodayLeads } from '@/components/today-leads';
 import { Card, CardContent } from '@/components/ui/card';
 import { getDeliveredLeads } from '@/lib/dashboard-queries';
 import { formatNumber } from '@/lib/format';
+import { getDict } from '@/lib/i18n/server';
+import { fmt } from '@/lib/i18n/config';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LeadsPage() {
   // Tier 4 ≈ 30 лидов/день, 80% с сайтом / 20% без.
   const leads = await getDeliveredLeads();
+  const dict = getDict();
 
   return (
     <>
       <PageHeader
-        title="Выданные лиды"
-        subtitle={`${formatNumber(leads.length)} в работе · 80% с сайтом, 20% без`}
+        title={dict.leadsPage.title}
+        subtitle={fmt(dict.leadsPage.subtitle, { count: formatNumber(leads.length) })}
       />
 
       <Card className="mb-4 border-amber-200 bg-amber-50/50">
@@ -29,8 +32,7 @@ export default async function LeadsPage() {
             <Info className="h-5 w-5" />
           </span>
           <p className="text-sm text-foreground/80">
-            Это рабочий набор — лиды, выданные на обработку. По каждому кнопка «Обработать»
-            запустит аудит и письмо. Скоро здесь будет дневная выдача по тарифу (≈30/день, разные ниши).
+            {dict.leadsPage.banner}
           </p>
         </CardContent>
       </Card>

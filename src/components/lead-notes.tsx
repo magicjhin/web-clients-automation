@@ -7,21 +7,23 @@
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n/provider';
 
 export function LeadNotes() {
   const [value, setValue] = useState('');
+  const { dict } = useI18n();
   return (
     <div className="space-y-2">
       <Textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Заметка: что сделал, что дальше (перезвонить, выслать КП…)"
+        placeholder={dict.leadNotes.placeholder}
         rows={3}
       />
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Сохранение подключится с CRM</span>
+        <span className="text-xs text-muted-foreground">{dict.leadNotes.saveHint}</span>
         <Button size="sm" variant="outline" disabled>
-          Сохранить
+          {dict.leadNotes.save}
         </Button>
       </div>
     </div>

@@ -106,7 +106,7 @@ export default async function CockpitPage({ searchParams }: PageProps) {
                     <Link href={`/leads/${lead.id}`} className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium hover:underline">{lead.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {lead.city ?? '—'} · {evrkName(lead.evrk2_code.slice(0, 2))}
+                        {lead.city ?? '—'} · {evrkName(lead.evrk2_code.slice(0, 2), dict.evrk)}
                       </p>
                     </Link>
                     {phone && (

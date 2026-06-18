@@ -13,16 +13,19 @@ import {
 import { SiteBadge, CreditBadge } from '@/components/badges';
 import { formatCurrency, formatDomain, externalHref } from '@/lib/format';
 import type { LeadRow } from '@/lib/dashboard-queries';
+import { useI18n } from '@/lib/i18n/provider';
 
 export function LeadsTable({ leads }: { leads: LeadRow[] }) {
+  const { dict } = useI18n();
+  const t = dict.table;
   if (leads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-secondary text-muted-foreground">
           <Inbox className="h-6 w-6" />
         </span>
-        <p className="text-sm font-medium">Лиды не найдены</p>
-        <p className="text-sm text-muted-foreground">Попробуйте изменить фильтры.</p>
+        <p className="text-sm font-medium">{t.notFound}</p>
+        <p className="text-sm text-muted-foreground">{t.tryFilters}</p>
       </div>
     );
   }
@@ -81,12 +84,12 @@ export function LeadsTable({ leads }: { leads: LeadRow[] }) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Компания</TableHead>
-              <TableHead>Сайт</TableHead>
-              <TableHead>Риск</TableHead>
-              <TableHead className="text-right">Выручка</TableHead>
-              <TableHead>Телефон</TableHead>
-              <TableHead>Сайт / Email</TableHead>
+              <TableHead>{t.company}</TableHead>
+              <TableHead>{t.site}</TableHead>
+              <TableHead>{t.risk}</TableHead>
+              <TableHead className="text-right">{t.revenue}</TableHead>
+              <TableHead>{t.phone}</TableHead>
+              <TableHead>{t.siteEmail}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

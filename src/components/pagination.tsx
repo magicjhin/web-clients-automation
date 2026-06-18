@@ -5,6 +5,7 @@ import { useTransition } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/format';
+import { useI18n } from '@/lib/i18n/provider';
 
 export function Pagination({
   page,
@@ -21,6 +22,7 @@ export function Pagination({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
+  const { dict } = useI18n();
 
   if (pageCount <= 1) return null;
 
@@ -36,7 +38,7 @@ export function Pagination({
   return (
     <div className="flex items-center justify-between gap-3 border-t px-4 py-3">
       <p className="text-xs text-muted-foreground">
-        <span className="tabular">{formatNumber(from)}–{formatNumber(to)}</span> из{' '}
+        <span className="tabular">{formatNumber(from)}–{formatNumber(to)}</span> {dict.common.of}{' '}
         <span className="tabular font-medium text-foreground">{formatNumber(total)}</span>
       </p>
       <div className="flex items-center gap-2">
@@ -47,7 +49,7 @@ export function Pagination({
           onClick={() => go(page - 1)}
         >
           <ChevronLeft className="h-4 w-4" />
-          Назад
+          {dict.common.back}
         </Button>
         <span className="tabular text-xs text-muted-foreground">
           {page} / {pageCount}
@@ -58,7 +60,7 @@ export function Pagination({
           disabled={page >= pageCount}
           onClick={() => go(page + 1)}
         >
-          Вперёд
+          {dict.common.next}
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

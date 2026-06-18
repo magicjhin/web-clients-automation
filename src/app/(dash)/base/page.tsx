@@ -18,6 +18,8 @@ import {
   type LeadFilters,
 } from '@/lib/dashboard-queries';
 import { formatNumber, evrkName } from '@/lib/format';
+import { getDict } from '@/lib/i18n/server';
+import { fmt } from '@/lib/i18n/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,31 +50,35 @@ export default async function BasePage({ searchParams }: PageProps) {
     getNicheStats(60),
   ]);
 
-  const nicheData = niches.slice(0, 8).map((n) => ({ name: evrkName(n.code2), leads: n.leads }));
+  const dict = getDict();
+  const nicheData = niches.slice(0, 8).map((n) => ({ name: evrkName(n.code2, dict.evrk), leads: n.leads }));
   // Опции для фильтра — названия ниш (не номера EVRK), только те, что есть в базе.
-  const nicheOptions = niches.map((n) => ({ code: n.code2, label: evrkName(n.code2) }));
+  const nicheOptions = niches.map((n) => ({ code: n.code2, label: evrkName(n.code2, dict.evrk) }));
 
   return (
     <>
       <PageHeader
-        title="База"
-        subtitle={`${formatNumber(stats.leadsTotal)} лидов всего · ${formatNumber(result.total)} по фильтрам`}
+        title={dict.basePage.title}
+        subtitle={fmt(dict.basePage.subtitle, {
+          total: formatNumber(stats.leadsTotal),
+          filtered: formatNumber(result.total),
+        })}
       />
 
       {/* Срез базы */}
       <div className="mb-4 grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="!flex-row items-center justify-between">
-            <CardTitle>Лиды по нишам</CardTitle>
-            <span className="text-xs text-muted-foreground">кликни нишу в списке для фильтра</span>
+            <CardTitle>{dict.basePage.nichesTitle}</CardTitle>
+            <span className="text-xs text-muted-foreground">{dict.basePage.nicheHint}</span>
           </CardHeader>
           <CardContent>
-            {nicheData.length ? <NicheBarChart data={nicheData} /> : <Empty />}
+            {nicheData.length ? <NicheBarChart data={nicheData} /> : <Empty label={dict.common.noData} />}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Кредит-риск</CardTitle>
+            <CardTitle>{dict.basePage.creditTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <CreditDonutChart
@@ -106,12 +112,12 @@ export default async function BasePage({ searchParams }: PageProps) {
       </Card>
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Быстрые ниши:{' '}
+        {dict.basePage.quickNiches}{' '}
         {['41', '43', '68', '62', '56'].map((c, i) => (
           <span key={c}>
             {i > 0 && ' · '}
             <Link href={`/base?niche=${c}`} className="text-brand-700 hover:underline">
-              {evrkName(c)}
+              {evrkName(c, dict.evrk)}
             </Link>
           </span>
         ))}
@@ -120,6 +126,6 @@ export default async function BasePage({ searchParams }: PageProps) {
   );
 }
 
-function Empty() {
-  return <p className="py-10 text-center text-sm text-muted-foreground">Нет данных</p>;
+function Empty({ label }: { label: string }) {
+  return <p className="py-10 text-center text-sm text-muted-foreground">{label}</p>;
 }

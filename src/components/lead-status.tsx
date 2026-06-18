@@ -14,20 +14,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useI18n } from '@/lib/i18n/provider';
 
 type Variant = NonNullable<BadgeProps['variant']>;
 
-const STATUSES: { key: string; label: string; variant: Variant }[] = [
-  { key: 'new', label: 'Не обработан', variant: 'outline' },
-  { key: 'in_progress', label: 'В работе', variant: 'warning' },
-  { key: 'done', label: 'Обработан', variant: 'brand' },
-  { key: 'replied', label: 'Ответ получен', variant: 'success' },
-  { key: 'deal', label: 'Сделка', variant: 'success' },
-  { key: 'rejected', label: 'Отказ', variant: 'destructive' },
-];
-
 export function LeadStatus({ initial = 'new' }: { initial?: string }) {
   const [status, setStatus] = useState(initial);
+  const { dict } = useI18n();
+  const s = dict.leadStatus;
+  const STATUSES: { key: string; label: string; variant: Variant }[] = [
+    { key: 'new', label: s.new, variant: 'outline' },
+    { key: 'in_progress', label: s.inProgress, variant: 'warning' },
+    { key: 'done', label: s.done, variant: 'brand' },
+    { key: 'replied', label: s.replied, variant: 'success' },
+    { key: 'deal', label: s.deal, variant: 'success' },
+    { key: 'rejected', label: s.rejected, variant: 'destructive' },
+  ];
   const cur = STATUSES.find((s) => s.key === status) ?? STATUSES[0];
 
   return (
@@ -48,7 +50,7 @@ export function LeadStatus({ initial = 'new' }: { initial?: string }) {
           </DropdownMenuItem>
         ))}
         <p className="border-t px-2.5 pb-1 pt-2 text-xs text-muted-foreground">
-          Сохранение и авто-статус — с CRM
+          {s.saveNote}
         </p>
       </DropdownMenuContent>
     </DropdownMenu>

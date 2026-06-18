@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getDict } from '@/lib/i18n/server';
 
 /**
  * Аккуратная заглушка для разделов, чей бэкенд ещё не готов
@@ -17,6 +18,7 @@ export function ComingSoon({
   description: string;
   bullets?: string[];
 }) {
+  const dict = getDict();
   return (
     <Card className="flex flex-col items-center gap-4 px-6 py-16 text-center">
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-foreground text-amber-400">
@@ -25,7 +27,7 @@ export function ComingSoon({
       <div className="space-y-1.5">
         <div className="flex items-center justify-center gap-2">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <Badge variant="brand">скоро</Badge>
+          <Badge variant="brand">{dict.common.soon}</Badge>
         </div>
         <p className="mx-auto max-w-md text-sm text-muted-foreground">{description}</p>
       </div>

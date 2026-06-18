@@ -10,17 +10,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getReviewDrafts } from '@/lib/dashboard-queries';
 import { formatNumber, formatDate } from '@/lib/format';
+import { getDict } from '@/lib/i18n/server';
+import { fmt } from '@/lib/i18n/config';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReviewPage() {
   const drafts = await getReviewDrafts();
+  const dict = getDict();
 
   return (
     <>
       <PageHeader
-        title="Проверка"
-        subtitle={`${formatNumber(drafts.length)} ждут подтверждения`}
+        title={dict.reviewPage.title}
+        subtitle={fmt(dict.reviewPage.subtitle, { count: formatNumber(drafts.length) })}
       />
 
       <Card className="mb-4 border-amber-200 bg-amber-50/60">
@@ -29,8 +32,7 @@ export default async function ReviewPage() {
             <ShieldCheck className="h-5 w-5" />
           </span>
           <p className="text-sm text-foreground/80">
-            Здесь проверяешь сгенерированные <b>аудит</b> и <b>письмо</b> по каждому лиду и
-            нажимаешь «Подтвердить отправку». Подтверждение человеком обязательно (GDPR).
+            {dict.reviewPage.banner}
           </p>
         </CardContent>
       </Card>
@@ -41,10 +43,9 @@ export default async function ReviewPage() {
             <span className="grid h-14 w-14 place-items-center rounded-2xl bg-secondary text-muted-foreground">
               <ClipboardCheck className="h-7 w-7" />
             </span>
-            <p className="text-sm font-medium">Пока проверять нечего</p>
+            <p className="text-sm font-medium">{dict.reviewPage.emptyTitle}</p>
             <p className="mx-auto max-w-md text-sm text-muted-foreground">
-              Как только обработаешь лид в разделе «Лиды» (аудит + письмо), он появится здесь
-              на проверку. Подключится с генерацией.
+              {dict.reviewPage.emptyDesc}
             </p>
           </CardContent>
         </Card>
@@ -56,14 +57,14 @@ export default async function ReviewPage() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{d.companyName}</p>
                   <p className="text-xs text-muted-foreground">
-                    сгенерировано {formatDate(d.generatedAt)}
+                    {fmt(dict.reviewPage.generatedAt, { date: formatDate(d.generatedAt) })}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {d.hasAudit && <Badge variant="secondary" className="gap-1"><Gauge className="h-3 w-3" />Аудит</Badge>}
-                  {d.hasEmail && <Badge variant="secondary" className="gap-1"><Mail className="h-3 w-3" />Письмо</Badge>}
-                  <Button size="sm" variant="outline">Рассмотреть</Button>
-                  <Button size="sm">Подтвердить</Button>
+                  {d.hasAudit && <Badge variant="secondary" className="gap-1"><Gauge className="h-3 w-3" />{dict.reviewPage.audit}</Badge>}
+                  {d.hasEmail && <Badge variant="secondary" className="gap-1"><Mail className="h-3 w-3" />{dict.reviewPage.email}</Badge>}
+                  <Button size="sm" variant="outline">{dict.reviewPage.inspect}</Button>
+                  <Button size="sm">{dict.reviewPage.confirm}</Button>
                 </div>
               </div>
             ))}

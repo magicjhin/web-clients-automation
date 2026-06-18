@@ -11,6 +11,7 @@ import {
   PieChart,
   Pie,
 } from 'recharts';
+import { useI18n } from '@/lib/i18n/provider';
 
 const tooltipStyle = {
   borderRadius: 12,
@@ -21,6 +22,7 @@ const tooltipStyle = {
 
 /** Горизонтальный бар: топ ниш по числу лидов. */
 export function NicheBarChart({ data }: { data: { name: string; leads: number }[] }) {
+  const { dict } = useI18n();
   return (
     <ResponsiveContainer width="100%" height={Math.max(180, data.length * 34)}>
       <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
@@ -36,7 +38,7 @@ export function NicheBarChart({ data }: { data: { name: string; leads: number }[
         <Tooltip
           cursor={{ fill: 'hsl(48 14% 94%)' }}
           contentStyle={tooltipStyle}
-          formatter={(value) => [Number(value ?? 0).toLocaleString('ru-RU'), 'Лидов']}
+          formatter={(value) => [Number(value ?? 0).toLocaleString('ru-RU'), dict.table.leadsWord]}
         />
         <Bar dataKey="leads" radius={[0, 6, 6, 0]} fill="#a3e635" barSize={18} />
       </BarChart>
@@ -58,12 +60,14 @@ export function CreditDonutChart({
   d?: number;
   e?: number;
 }) {
+  const { dict } = useI18n();
+  const f = dict.filters;
   const data = [
-    { name: 'A — минимальный', value: a, fill: '#65a30d' },
-    { name: 'B — низкий', value: b, fill: '#94a3b8' },
-    { name: 'C — средний', value: c, fill: '#f59e0b' },
-    { name: 'D — высокий', value: d, fill: '#ef4444' },
-    { name: 'E — наивысший', value: e, fill: '#b91c1c' },
+    { name: f.riskA, value: a, fill: '#65a30d' },
+    { name: f.riskB, value: b, fill: '#94a3b8' },
+    { name: f.riskC, value: c, fill: '#f59e0b' },
+    { name: f.riskD, value: d, fill: '#ef4444' },
+    { name: f.riskE, value: e, fill: '#b91c1c' },
   ].filter((x) => x.value > 0);
   return (
     <ResponsiveContainer width="100%" height={200}>

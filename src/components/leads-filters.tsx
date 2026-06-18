@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useI18n } from '@/lib/i18n/provider';
 
 const ALL = '__all__';
 
@@ -29,6 +30,8 @@ export function LeadsFilters({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
+  const { dict } = useI18n();
+  const f = dict.filters;
 
   const updateParam = useCallback(
     (key: string, value: string) => {
@@ -46,11 +49,11 @@ export function LeadsFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <Field label="Поиск" htmlFor="f-q" className="min-w-[180px] flex-1">
+      <Field label={f.search} htmlFor="f-q" className="min-w-[180px] flex-1">
         <Input
           id="f-q"
           type="search"
-          placeholder="Название компании…"
+          placeholder={f.searchPlaceholder}
           defaultValue={get('q')}
           onKeyDown={(e) => {
             if (e.key === 'Enter') updateParam('q', (e.target as HTMLInputElement).value);
@@ -59,55 +62,55 @@ export function LeadsFilters({
         />
       </Field>
 
-      <Field label="Сайт" htmlFor="f-branch">
+      <Field label={f.site} htmlFor="f-branch">
         <Select value={get('branch') || ALL} onValueChange={(v) => updateParam('branch', v)}>
           <SelectTrigger id="f-branch" className="w-[140px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>Все</SelectItem>
-            <SelectItem value="A_bad_site">Есть сайт</SelectItem>
-            <SelectItem value="B_no_site">Нет сайта</SelectItem>
+            <SelectItem value={ALL}>{f.all}</SelectItem>
+            <SelectItem value="A_bad_site">{f.hasSite}</SelectItem>
+            <SelectItem value="B_no_site">{f.noSite}</SelectItem>
           </SelectContent>
         </Select>
       </Field>
 
-      <Field label="Кредит-риск" htmlFor="f-credit">
+      <Field label={f.credit} htmlFor="f-credit">
         <Select value={get('credit_risk') || ALL} onValueChange={(v) => updateParam('credit_risk', v)}>
           <SelectTrigger id="f-credit" className="w-[150px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>Любой риск</SelectItem>
-            <SelectItem value="A">A — минимальный</SelectItem>
-            <SelectItem value="B">B — низкий</SelectItem>
-            <SelectItem value="C">C — средний</SelectItem>
-            <SelectItem value="D">D — высокий</SelectItem>
-            <SelectItem value="E">E — наивысший</SelectItem>
+            <SelectItem value={ALL}>{f.anyRisk}</SelectItem>
+            <SelectItem value="A">{f.riskA}</SelectItem>
+            <SelectItem value="B">{f.riskB}</SelectItem>
+            <SelectItem value="C">{f.riskC}</SelectItem>
+            <SelectItem value="D">{f.riskD}</SelectItem>
+            <SelectItem value="E">{f.riskE}</SelectItem>
           </SelectContent>
         </Select>
       </Field>
 
-      <Field label="Телефон" htmlFor="f-phone">
+      <Field label={f.phone} htmlFor="f-phone">
         <Select value={get('has_phone') || ALL} onValueChange={(v) => updateParam('has_phone', v)}>
           <SelectTrigger id="f-phone" className="w-[140px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>Все</SelectItem>
-            <SelectItem value="yes">Есть телефон</SelectItem>
-            <SelectItem value="no">Без телефона</SelectItem>
+            <SelectItem value={ALL}>{f.all}</SelectItem>
+            <SelectItem value="yes">{f.hasPhone}</SelectItem>
+            <SelectItem value="no">{f.noPhone}</SelectItem>
           </SelectContent>
         </Select>
       </Field>
 
-      <Field label="Ниша" htmlFor="f-niche">
+      <Field label={f.niche} htmlFor="f-niche">
         <Select value={get('niche') || ALL} onValueChange={(v) => updateParam('niche', v)}>
           <SelectTrigger id="f-niche" className="w-[210px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>Все ниши</SelectItem>
+            <SelectItem value={ALL}>{f.allNiches}</SelectItem>
             {niches?.map((n) => (
               <SelectItem key={n.code} value={n.code}>
                 {n.label}
@@ -124,7 +127,7 @@ export function LeadsFilters({
           onClick={() => startTransition(() => router.push(pathname))}
         >
           <X className="h-4 w-4" />
-          Сбросить
+          {f.reset}
         </Button>
       )}
     </div>

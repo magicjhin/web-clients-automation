@@ -31,6 +31,7 @@ import {
   externalHref,
   evrkName,
 } from '@/lib/format';
+import { getDict } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,19 +41,21 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   const e = company.enrichment;
   const phone = e?.phone ?? null;
+  const dict = getDict();
+  const d = dict.leadDetail;
 
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
         <Link href="/leads">
           <ArrowLeft className="h-4 w-4" />
-          К списку
+          {d.backToList}
         </Link>
       </Button>
 
       <PageHeader
         title={company.name}
-        subtitle={`${evrkName(company.evrk2_code.slice(0, 2))} · EVRK ${company.evrk2_code}`}
+        subtitle={`${evrkName(company.evrk2_code.slice(0, 2), dict.evrk)} · EVRK ${company.evrk2_code}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {e?.credit_risk && <CreditBadge risk={e.credit_risk} />}
@@ -66,7 +69,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         <CardHeader className="!flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <Sparkles className="h-4 w-4" />
-            Обработка
+            {d.processing}
           </CardTitle>
           <LeadStatus />
         </CardHeader>
@@ -78,23 +81,23 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                   <Button asChild size="default">
                     <a href={`tel:${phone.replace(/\s/g, '')}`}>
                       <Phone className="h-4 w-4" />
-                      Позвонить
+                      {dict.cockpit.call}
                     </a>
                   </Button>
                 ) : (
                   <Button size="default" variant="outline" disabled>
-                    Нет телефона
+                    {dict.cockpit.noPhone}
                   </Button>
                 )}
                 <span className="text-sm text-muted-foreground">
-                  Сайта нет → и почты нет. Связь только звонком (предложить сайт с нуля).
+                  {d.noSiteNote}
                 </span>
               </>
             ) : (
               <>
                 <LeadActionButton companyName={company.name} size="default" />
                 <span className="text-sm text-muted-foreground">
-                  Аудит + письмо в один клик → попадёт в «Проверку»
+                  {d.auditEmailNote}
                 </span>
               </>
             )}
@@ -102,7 +105,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           <Separator />
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Комментарий по обработке
+              {d.commentTitle}
             </p>
             <LeadNotes />
           </div>
@@ -113,10 +116,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         {/* Контакты */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Контакты</CardTitle>
+            <CardTitle className="text-base">{d.contacts}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <Row icon={Phone} label="Телефон">
+            <Row icon={Phone} label={d.phone}>
               {phone ? (
                 <a href={`tel:${phone.replace(/\s/g, '')}`} className="text-brand-700 hover:underline">
                   {phone}
@@ -125,7 +128,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <Muted />
               )}
             </Row>
-            <Row icon={Smartphone} label="Мобильный">
+            <Row icon={Smartphone} label={d.mobile}>
               {e?.mobile ? (
                 <a href={`tel:${e.mobile.replace(/\s/g, '')}`} className="text-brand-700 hover:underline">
                   {e.mobile}
@@ -134,7 +137,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <Muted />
               )}
             </Row>
-            <Row icon={Mail} label="Email">
+            <Row icon={Mail} label={d.email}>
               {e?.email ? (
                 <a href={`mailto:${e.email}`} className="break-all text-brand-700 hover:underline">
                   {e.email}
@@ -143,7 +146,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 <Muted />
               )}
             </Row>
-            <Row icon={Globe} label="Сайт">
+            <Row icon={Globe} label={d.site}>
               {e?.website_url ? (
                 <a
                   href={externalHref(e.website_url) ?? '#'}
@@ -159,10 +162,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
               )}
             </Row>
             <Separator />
-            <Row icon={MapPin} label="Адрес">
+            <Row icon={MapPin} label={d.address}>
               {company.address || company.city || <Muted />}
             </Row>
-            <Row icon={Building2} label="Форма">
+            <Row icon={Building2} label={d.legalForm}>
               {company.legal_form ?? <Muted />}
             </Row>
           </CardContent>
@@ -171,15 +174,15 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         {/* Финансы */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Финансы</CardTitle>
+            <CardTitle className="text-base">{d.finance}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <KV label="Выручка" value={formatCurrency(e?.revenue)} big />
-            <KV label="Прибыль" value={formatCurrency(e?.profit)} />
-            <KV label="Год отчёта" value={e?.fin_year ? String(e.fin_year) : '—'} />
+            <KV label={d.revenue} value={formatCurrency(e?.revenue)} big />
+            <KV label={d.profit} value={formatCurrency(e?.profit)} />
+            <KV label={d.finYear} value={e?.fin_year ? String(e.fin_year) : '—'} />
             <Separator />
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Кредит-риск</span>
+              <span className="text-muted-foreground">{d.creditRisk}</span>
               <span className="flex items-center gap-2">
                 {e?.credit_risk ? <CreditBadge risk={e.credit_risk} /> : <Muted />}
                 {e?.credit_label && (
@@ -193,22 +196,22 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         {/* Сайт / реестр */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Сайт и реестр</CardTitle>
+            <CardTitle className="text-base">{d.siteRegistry}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">PageSpeed (моб.)</span>
+              <span className="text-muted-foreground">{d.pagespeedMobile}</span>
               <PageSpeedBadge score={e?.pagespeed_mobile ?? null} />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">PageSpeed (десктоп)</span>
+              <span className="text-muted-foreground">{d.pagespeedDesktop}</span>
               <PageSpeedBadge score={e?.pagespeed_desktop ?? null} />
             </div>
             <Separator />
-            <KV label="RC-код" value={company.rc_code} />
-            <KV label="Город" value={company.city ?? '—'} />
-            <KV label="Регистрация" value={formatDate(company.reg_date)} />
-            <KV label="Обогащено" value={formatDate(e?.enriched_at)} />
+            <KV label={d.rcCode} value={company.rc_code} />
+            <KV label={d.city} value={company.city ?? '—'} />
+            <KV label={d.registration} value={formatDate(company.reg_date)} />
+            <KV label={d.enrichedAt} value={formatDate(e?.enriched_at)} />
           </CardContent>
         </Card>
       </div>

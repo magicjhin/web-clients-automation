@@ -11,9 +11,12 @@ import { Brand } from '@/components/brand';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useI18n } from '@/lib/i18n/provider';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { dict } = useI18n();
+  const t = dict.login;
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,10 +36,11 @@ export default function LoginPage() {
         router.push('/');
         router.refresh();
       } else {
-        setError(data.error ?? 'Неверный пароль');
+        // Любая неуспешная попытка для пароль-гейта = «неверный пароль» (локализованно).
+        setError(t.wrongPassword);
       }
     } catch {
-      setError('Ошибка сети. Попробуйте ещё раз.');
+      setError(t.netError);
     } finally {
       setLoading(false);
     }
@@ -47,7 +51,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Brand className="text-lg" />
-          <p className="text-sm text-sidebar-muted">B2B-лидогенерация · Литва</p>
+          <p className="text-sm text-sidebar-muted">{t.tagline}</p>
         </div>
 
         <form
@@ -55,7 +59,7 @@ export default function LoginPage() {
           className="space-y-4 rounded-2xl border bg-card p-6 shadow-lg"
         >
           <div className="space-y-1.5">
-            <Label htmlFor="password">Пароль</Label>
+            <Label htmlFor="password">{t.password}</Label>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -65,7 +69,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Введите пароль"
+                placeholder={t.passwordPlaceholder}
                 disabled={loading}
                 className="pl-9"
               />
@@ -79,7 +83,7 @@ export default function LoginPage() {
           )}
 
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Вход…' : 'Войти'}
+            {loading ? t.signingIn : t.signIn}
           </Button>
         </form>
       </div>

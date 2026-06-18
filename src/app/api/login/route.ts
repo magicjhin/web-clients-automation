@@ -32,12 +32,12 @@ export async function POST(request: NextRequest) {
 
   // Fail closed: empty candidate always denied.
   if (!candidate) {
-    return NextResponse.json({ ok: false, error: 'Неверный пароль' }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'invalid_credentials' }, { status: 401 });
   }
 
   const token = verifyPassword(candidate);
   if (!token) {
-    return NextResponse.json({ ok: false, error: 'Неверный пароль' }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'invalid_credentials' }, { status: 401 });
   }
 
   const response = NextResponse.json({ ok: true });
